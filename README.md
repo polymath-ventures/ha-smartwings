@@ -9,7 +9,7 @@ Out of the box, these shades misbehave in ZHA:
 - Commands can show an error even when the shade moved.
 - The position on the card is often wrong after a move.
 
-This project fixes all four. It has two parts: a ZHA **quirk** (`quirk/zhaquirks/smartwings/wm25lz.py`) that fixes how commands are sent, and a small **integration** that installs the quirk for you and keeps it up to date.
+This project fixes all four. It is one small **integration** that adds a ZHA **quirk** (`custom_components/smartwings/quirk.py`) to ZHA. The quirk fixes how commands are sent to the shades.
 
 ## Requirements
 
@@ -18,22 +18,15 @@ This project fixes all four. It has two parts: a ZHA **quirk** (`quirk/zhaquirks
 
 ## Install
 
-1. **Install the integration.** In HACS, open ⋮ → Custom repositories, add `https://github.com/polymath-ventures/ha-smartwings` as an **Integration**, then download **SmartWings**. (Or copy `custom_components/smartwings` into `/config/custom_components/`.) Restart Home Assistant.
-2. **Add it.** Settings → Devices & services → Add integration → **SmartWings**. There is nothing to configure; it finds your shades by itself.
-3. **Tell ZHA where to find the quirk.** Add this to `configuration.yaml` (if you already have a `zha:` section, add just the `custom_quirks_path` line):
+1. **Install the integration.** In HACS, open ⋮ → Custom repositories, add `https://github.com/polymath-ventures/ha-smartwings` as an **Integration**, then download **SmartWings**. (Or copy `custom_components/smartwings` into `/config/custom_components/`.)
+2. **Restart Home Assistant.**
+3. **Add the integration.** Settings → Devices & services → Add integration → **SmartWings**. You don't configure anything; the integration finds your shades by itself.
 
-   ```yaml
-   zha:
-     custom_quirks_path: /config/custom_zha_quirks/
-   ```
+That's it. You don't edit `configuration.yaml` or copy any quirk file.
 
-   If you already use a different custom quirks folder, keep it. The integration uses whichever folder is set.
+When you add the integration, it reloads ZHA once so that ZHA applies the quirk to your shades. Your Zigbee devices are unavailable for a few seconds while ZHA reloads. After a restart, Home Assistant loads the integration before ZHA starts, so ZHA usually applies the quirk without a reload.
 
-4. **Restart Home Assistant.**
-
-That's it. Settings → Repairs should show nothing from SmartWings. If it shows something, see [Repairs messages](#repairs-messages).
-
-ZHA will log a warning that it loaded custom quirks. That's expected.
+Settings → Repairs should show nothing from SmartWings. If it shows something, see [Repairs messages](#repairs-messages).
 
 ## Set the open and closed positions with the remote
 
@@ -60,12 +53,8 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 
 | Message | What to do |
 | --- | --- |
-| Set ZHA's custom_quirks_path for the SmartWings quirk | Add the `configuration.yaml` lines from step 3, then restart. |
-| Restart to load the SmartWings quirk | Restart Home Assistant, or reload ZHA. |
-| SmartWings quirk not loaded | ZHA isn't using the quirk for the shades listed. Check the other SmartWings messages first, then make sure you restarted after step 3. |
-| SmartWings quirk file is in the way | A different `wm25lz.py` is in your quirks folder. Remove it and restart. |
-| SmartWings could not update its quirk file | Check the folder's permissions, then restart. |
-| The SmartWings quirk is now part of Home Assistant | You no longer need this project's copy. Delete `wm25lz.py` from your quirks folder and restart. |
+| SmartWings quirk not loaded | ZHA still used another quirk for the shades listed, even after the integration reloaded ZHA. Another quirk for these shades probably takes precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant. |
+| The SmartWings quirk is now part of Home Assistant | Home Assistant's own ZHA quirks now include this quirk, so you no longer need this integration. Remove it (see [Uninstall](#uninstall)). |
 
 ## Troubleshooting
 
@@ -82,7 +71,7 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 
 ## Uninstall
 
-Remove the integration from Settings → Devices & services, delete `wm25lz.py` from your quirks folder, remove the `custom_quirks_path` line if nothing else uses it, and restart.
+Remove the integration from Settings → Devices & services (SmartWings → ⋮ → Delete). If you installed it with HACS, remove it in HACS too; if you copied it, delete `/config/custom_components/smartwings`. Then restart Home Assistant. ZHA then goes back to the quirk that comes with Home Assistant, which swaps Open and Close for these shades.
 
 ## More detail
 

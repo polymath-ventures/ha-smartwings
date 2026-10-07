@@ -10,19 +10,21 @@ from zigpy.profiles import zha as zha_profile
 import zigpy.types as t
 from zigpy.zcl.clusters.general import Basic, OnOff
 
-from custom_components.smartwings import bundle
 from custom_components.smartwings.const import DOMAIN, QUIRK_ID
 from custom_components.smartwings.shades import ShadeDirectory
-from tests.quirk.conftest import QUIRK_FILE
 from tests.zha_harness import SHADE_IEEE, HarnessApp, ZhaHarness
 from tests.zha_harness.harness import ZHA_ENTRY_ID
 from tests.zha_harness.radio import SHADE_NODE_DESCRIPTOR
 
 ENTRY_ID = "01K0SMARTWINGS000000000000"
 ISSUE_ID = "quirk_not_loaded"
-QUIRK_NAME = QUIRK_FILE.name
-# The quirk file as the integration installs it: the marker, then the source.
-INSTALLED_QUIRK = bundle.MARKER.encode() + b"\n" + QUIRK_FILE.read_bytes()
+ISSUE_UPSTREAM = "quirk_now_upstream"
+# Another quirk for the WM25/L-Z, without the SmartWings quirk ID, as a custom quirk.
+SHADOW_FILE = "other_wm25lz.py"
+SHADOW_QUIRK = """from zhaquirks.builder import QuirkBuilder
+
+QuirkBuilder("Smartwings", "WM25/L-Z").add_to_registry()
+"""
 
 # A device that is not a shade, for discovery to pass over.
 PLUG_IEEE = t.EUI64.convert("00:0d:6f:00:0a:bc:de:01")
@@ -30,21 +32,24 @@ PLUG_NWK = t.NWK(0x1234)
 
 
 async def install(harness: ZhaHarness) -> ShadeDirectory:
-    """Install the integration after ZHA, now and at every restart; return its shades."""
+    """Add the integration with ZHA running, and at every restart; return its shades."""
     await harness.install(DOMAIN, ENTRY_ID)
     return directory(harness)
 
 
-async def install_with_quirk(harness: ZhaHarness) -> ShadeDirectory:
-    """Supply the quirk, restart, then install the integration; return its shades.
+def shadow(harness: ZhaHarness) -> None:
+    """Put another quirk for the WM25/L-Z in custom_quirks_path (ZHA loads it next)."""
+    (harness.custom_quirks_path / SHADOW_FILE).write_text(SHADOW_QUIRK)
 
-    Frames sent so far are dropped.
-    """
-    await supply_quirk(harness)
-    await harness.restart()
-    shades = await install(harness)
-    harness.frames.clear()
-    return shades
+
+def unshadow(harness: ZhaHarness) -> None:
+    """Delete the other quirk from custom_quirks_path (ZHA drops it when it next loads)."""
+    (harness.custom_quirks_path / SHADOW_FILE).unlink()
+
+
+def zha_reloads(harness: ZhaHarness) -> int:
+    """Return how many times ZHA was reloaded since Home Assistant started."""
+    return harness.zha_starts - 1
 
 
 def directory(harness: ZhaHarness) -> ShadeDirectory:
@@ -63,9 +68,9 @@ def zha_device(harness: ZhaHarness, ieee: t.EUI64) -> dr.DeviceEntry:
     return device
 
 
-def issue(harness: ZhaHarness) -> ir.IssueEntry | None:
-    """Return the missing-quirk Repairs issue, if it is raised (active)."""
-    raised = ir.async_get(harness.hass).async_get_issue(DOMAIN, ISSUE_ID)
+def issue(harness: ZhaHarness, issue_id: str = ISSUE_ID) -> ir.IssueEntry | None:
+    """Return the integration's Repairs issue, if it is raised (active)."""
+    raised = ir.async_get(harness.hass).async_get_issue(DOMAIN, issue_id)
     return raised if raised is not None and raised.active else None
 
 
@@ -106,11 +111,6 @@ def quirk_loaded(harness: ZhaHarness, ieee: t.EUI64 = SHADE_IEEE) -> bool:
     """Return whether ZHA's device for ``ieee`` was built with the quirk (its ID)."""
     proxy = get_zha_gateway_proxy(harness.hass).device_proxies[ieee]
     return QUIRK_ID in proxy.device.exposes_features
-
-
-async def supply_quirk(harness: ZhaHarness) -> None:
-    """Put the quirk in custom_quirks_path, as the integration installs it."""
-    (harness.custom_quirks_path / QUIRK_NAME).write_bytes(INSTALLED_QUIRK)
 
 
 async def seed_plug(harness: ZhaHarness) -> None:

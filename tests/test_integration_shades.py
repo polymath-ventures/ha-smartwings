@@ -13,7 +13,7 @@ from tests.smartwings_helpers import (
     install,
     record_updates,
     seed_plug,
-    supply_quirk,
+    unshadow,
     zha_device,
 )
 from tests.zha_harness import SHADE_IEEE, MotorSim, ZhaHarness, add_shade
@@ -84,23 +84,24 @@ async def test_a_removed_shade_is_dropped(zha_harness: ZhaHarness) -> None:
 # --- Quirk activity, by the quirk ID --------------------------------------------------
 
 
-async def test_status_is_not_active_with_the_released_quirk(
-    zha_harness: ZhaHarness,
+async def test_status_is_not_active_with_another_quirk(
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
-    """With only zha-quirks' vendor quirk, the shade's quirk is not active."""
-    shades = await install(zha_harness)
+    """With another quirk in front of it, the shade's quirk is not active."""
+    shades = await install(zha_harness_shadowed)
 
     assert shades.shades[SHADE].quirk_active is False
 
 
 async def test_status_follows_the_quirk_across_a_zha_reload(
-    zha_harness: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
-    """Quirk supplied, then ZHA reloaded: listeners hear of it and it is active."""
+    """The other quirk deleted, then ZHA reloaded: listeners hear of it, it is active."""
+    zha_harness = zha_harness_shadowed
     shades = await install(zha_harness)
     updates = record_updates(shades)
 
-    await supply_quirk(zha_harness)
+    unshadow(zha_harness)
     await zha_harness.reload_zha()
 
     assert shades.shades[SHADE].quirk_active is True
@@ -108,9 +109,10 @@ async def test_status_follows_the_quirk_across_a_zha_reload(
 
 
 async def test_status_is_gateway_unavailable_while_zha_is_down(
-    zha_harness: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """While ZHA is unloaded the shade is kept, and ZHA is recorded as unavailable."""
+    zha_harness = zha_harness_shadowed
     shades = await install(zha_harness)
     hass = zha_harness.hass
 
@@ -120,7 +122,7 @@ async def test_status_is_gateway_unavailable_while_zha_is_down(
     assert shades.gateway_available is False
     assert set(shades.shades) == {SHADE}
 
-    await supply_quirk(zha_harness)
+    unshadow(zha_harness)
     assert await hass.config_entries.async_setup(ZHA_ENTRY_ID)
     await hass.async_block_till_done()
 
@@ -129,10 +131,9 @@ async def test_status_is_gateway_unavailable_while_zha_is_down(
 
 
 async def test_status_with_the_quirk_after_a_restart(zha_harness: ZhaHarness) -> None:
-    """The quirk in custom_quirks_path at startup: the shade's quirk is active from setup."""
-    await supply_quirk(zha_harness)
+    """Integration installed, restart: the shade's quirk is active from setup."""
+    await install(zha_harness)
+
     await zha_harness.restart()
 
-    shades = await install(zha_harness)
-
-    assert shades.shades[SHADE].quirk_active is True
+    assert directory(zha_harness).shades[SHADE].quirk_active is True

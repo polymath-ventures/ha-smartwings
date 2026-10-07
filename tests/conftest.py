@@ -10,6 +10,7 @@ import pytest
 import zhaquirks
 
 import custom_components  # noqa: F401
+from tests.smartwings_helpers import shadow
 from tests.zha_harness import open_zha_harness
 
 
@@ -32,12 +33,13 @@ async def zha_harness(tmp_path, hass_storage):
 
 
 @pytest.fixture
-async def zha_harness_without_quirks_path(tmp_path, hass_storage):
-    """Boot the same harness with no custom_quirks_path in ZHA's YAML.
+async def zha_harness_shadowed(tmp_path, hass_storage):
+    """Boot the harness with another quirk for the WM25/L-Z in custom_quirks_path.
 
-    The integration then cannot supply the quirk: the shade stays without it.
+    ZHA loads custom quirks last whenever it sets up, so that quirk always takes
+    precedence: the shade never gets the SmartWings quirk.
     """
-    async with open_zha_harness(
-        tmp_path, hass_storage, custom_quirks_path_configured=False
-    ) as harness:
+    async with open_zha_harness(tmp_path, hass_storage) as harness:
+        shadow(harness)
+        await harness.restart()
         yield harness

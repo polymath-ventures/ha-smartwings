@@ -3,7 +3,6 @@
   "name": "SmartWings",
   "codeowners": [],
   "config_flow": true,
-  "dependencies": ["zha"],
   "documentation": "https://github.com/polymath-ventures/ha-smartwings",
   "integration_type": "hub",
   "iot_class": "calculated",

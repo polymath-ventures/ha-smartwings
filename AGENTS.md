@@ -4,11 +4,13 @@ Home Assistant support for SmartWings WM25/L-Z Zigbee roller shades under ZHA.
 
 ## Layout
 
-- `quirk/zhaquirks/smartwings/wm25lz.py` — the ZHA quirk, written in zha-device-handlers
+- `custom_components/smartwings/quirk.py` — the ZHA quirk, written in zha-device-handlers
   style so it can be submitted upstream. It must not import Home Assistant or read files.
-- `custom_components/smartwings/` — the integration. It installs the quirk into ZHA's
-  `custom_quirks_path`, raises Repairs issues when the quirk isn't loaded, and finds the
-  quirk only by its quirk ID `smartwings.wm25lz`.
+- `custom_components/smartwings/` — the integration. Importing it registers the quirk in
+  ZHA's quirk registry (`zha_gateway.py`); setting it up reloads ZHA once if ZHA built a
+  shade without the quirk (`activation.py`) and raises Repairs issues when the quirk still
+  isn't loaded. It finds the quirk only by its quirk ID `smartwings.wm25lz`. The manifest
+  does not depend on ZHA, so Home Assistant imports it before ZHA builds its devices.
 - `docs/device-behavior.md` — how the shades behave over Zigbee, and why the quirk does what it does.
 
 ## Commands

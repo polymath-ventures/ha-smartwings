@@ -6,7 +6,7 @@ from homeassistant.exceptions import HomeAssistantError
 import pytest
 from zigpy.zcl.clusters.closures import WindowCovering
 
-from tests.smartwings_helpers import supply_quirk
+from tests.smartwings_helpers import install
 from tests.zha_harness import ZhaHarness, open_zha_harness
 
 COMMANDS = WindowCovering.ServerCommandDefs
@@ -14,10 +14,9 @@ COMMANDS = WindowCovering.ServerCommandDefs
 
 @pytest.fixture
 async def harness(tmp_path, hass_storage) -> AsyncIterator[ZhaHarness]:
-    """Boot the harness with the quirk supplied through custom_quirks_path."""
+    """Boot the harness with the integration added, so the shade has the quirk."""
     async with open_zha_harness(tmp_path, hass_storage) as booted:
-        await supply_quirk(booted)
-        await booted.restart()
+        await install(booted)
         booted.frames.clear()
         yield booted
 

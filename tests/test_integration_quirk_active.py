@@ -1,16 +1,15 @@
 """How the integration decides whether the quirk is active for a shade.
 
 The quirk declares a quirk ID through ZHA's exposed features; ZHA lists it in the
-device's ``exposes_features``, and that is the only thing the integration reads.
+device's ``exposes_features``, and that is the only thing the integration reads. Variants
+of the quirk go in custom_quirks_path, which ZHA loads last, so they take precedence over
+the integration's own registration.
 """
 
-from pathlib import Path
-
+from tests.quirk.conftest import QUIRK_FILE as QUIRK_SOURCE
 from tests.smartwings_helpers import install
 from tests.zha_harness import SHADE_IEEE, ZhaHarness
 
-ROOT = Path(__file__).parents[1]
-QUIRK_SOURCE = ROOT / "quirk" / "zhaquirks" / "smartwings" / "wm25lz.py"
 SHADE = str(SHADE_IEEE)
 
 
@@ -22,7 +21,7 @@ def replaced(source: str, old: str, new: str) -> str:
 
 async def active_with(harness: ZhaHarness, source: str) -> bool:
     """Supply ``source`` as the quirk, restart, install; return whether the quirk is active."""
-    (harness.custom_quirks_path / QUIRK_SOURCE.name).write_text(source)
+    (harness.custom_quirks_path / "wm25lz.py").write_text(source)
     await harness.restart()
     shades = await install(harness)
     return shades.shades[SHADE].quirk_active
