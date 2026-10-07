@@ -73,9 +73,21 @@ def _moved(origin: int | None, target: int, lift: int) -> bool:
     return origin is not None and abs(target - lift) <= abs(target - origin) - MOVED
 
 
-def _live(task: asyncio.Task | None) -> bool:
-    """Return whether ``task`` exists and is neither finished nor being cancelled."""
-    return task is not None and not task.done() and not task.cancelling()
+def _target(command_id: int, args: tuple, kwargs: dict[str, Any]) -> int | None:
+    """Return the lift a movement heads for, or None if it names no valid lift."""
+    if command_id != GO_TO_LIFT:
+        return MOVES[command_id]
+    return _lift(args[0] if args else kwargs.get("percentage_lift_value"))
+
+
+def _refusal(command_id: int, args: tuple, kwargs: dict[str, Any]) -> Any:
+    """Return why a command must not be sent, as a status, or None to send it."""
+    standard = kwargs.get("manufacturer") in (None, UNDEFINED)
+    if command_id in REFUSED or (command_id in MOVES and not standard):
+        return foundation.Status.UNSUP_CLUSTER_COMMAND
+    if command_id in MOVES and _target(command_id, args, kwargs) is None:
+        return foundation.Status.INVALID_VALUE
+    return None
 
 
 class WM25LZWindowCovering(CustomCluster, WindowCovering):
@@ -86,38 +98,34 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         super().__init__(*args, **kwargs)
         self._task: asyncio.Task | None = None  # what follows the latest command
         self._report: asyncio.Future[int] | None = None
+        # False from a movement or Stop until a report or our read gives the lift.
+        self._confirmed = True
 
     async def request(
         self, general: bool, command_id: Any, schema: Any, *args: Any, **kwargs: Any
     ) -> Any:
-        """Refuse, unsent, what the radio mangles or does not forward."""
+        """Send a request, compensating for the radio and the motor."""
+        refusal = None if general else _refusal(command_id, args, kwargs)
+        if refusal is not None:
+            _LOGGER.debug("Refusing command 0x%02x, not sent: %s", command_id, refusal)
+            return _response(command_id, refusal)
         standard = kwargs.get("manufacturer") in (None, UNDEFINED)
-        if not general and (
-            command_id in REFUSED or (command_id in MOVES and not standard)
-        ):
-            _LOGGER.debug("Refusing command 0x%02x, not sent", command_id)
-            return _response(command_id, foundation.Status.UNSUP_CLUSTER_COMMAND)
+        if not general and command_id == STOP and standard:
+            self._confirmed = False
+            self._start(self._wait_for_lift(STOP_WAIT))
+            return await self._send(command_id, schema, *args, **kwargs)
+        if not general and command_id in MOVES:
+            return await self._move(command_id, schema, *args, **kwargs)
         return await super().request(general, command_id, schema, *args, **kwargs)
 
-    async def command(self, command_id: Any, *args: Any, **kwargs: Any) -> Any:
-        """Send a command, compensating for the radio and the motor."""
-        if kwargs.get("manufacturer") not in (None, UNDEFINED):
-            return await super().command(command_id, *args, **kwargs)
-        if command_id == STOP:
-            self._start(self._wait_for_lift(STOP_WAIT))
-            return await self._send(command_id, *args, **kwargs)
-        if command_id in MOVES:
-            return await self._move(command_id, *args, **kwargs)
-        return await super().command(command_id, *args, **kwargs)
-
-    async def _move(self, command_id: int, *args: Any, **kwargs: Any) -> Any:
+    async def _move(
+        self, command_id: int, schema: Any, *args: Any, **kwargs: Any
+    ) -> Any:
         """Send a movement and follow its travel in the background."""
-        target = MOVES[command_id]
-        if command_id == GO_TO_LIFT:
-            target = _lift(args[0] if args else kwargs.get("percentage_lift_value"))
-        # While earlier travel may be under way, the cached lift is from before it.
-        origin = None if _live(self._task) else _lift(self.get(LIFT.id))
-        send = functools.partial(self._send, command_id, *args, **kwargs)
+        target = _target(command_id, args, kwargs)
+        origin = _lift(self.get(LIFT.id)) if self._confirmed else None
+        self._confirmed = False
+        send = functools.partial(self._send, command_id, schema, *args, **kwargs)
         sent = asyncio.get_running_loop().create_future()
         task = self._start(self._follow(sent, origin, target, send))
         try:
@@ -135,15 +143,18 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         except (DeliveryError, TimeoutError) as exc:
             _LOGGER.debug("Command 0x%02x lost (%r), sending again", command_id, exc)
         await asyncio.sleep(RESEND_DELAY)
-        if _live(task) and self._registered():
+        if not task.done() and not task.cancelling() and self._registered():
             with contextlib.suppress(DeliveryError, TimeoutError):
                 return await send()
         return _response(command_id, foundation.Status.FAILURE)
 
-    async def _send(self, command_id: int, *args: Any, **kwargs: Any) -> Any:
+    async def _send(
+        self, command_id: int, schema: Any, *args: Any, **kwargs: Any
+    ) -> Any:
         """Send one frame; report the radio's second reply, 0x81, as SUCCESS."""
+        kwargs = {"retries": 0, **kwargs}
         async with asyncio.timeout(SEND_TIMEOUT):
-            reply = await super().command(command_id, *args, **{"retries": 0, **kwargs})
+            reply = await super().request(False, command_id, schema, *args, **kwargs)
         if getattr(reply, "status", None) == foundation.Status.UNSUP_CLUSTER_COMMAND:
             return _response(command_id, foundation.Status.SUCCESS)
         return reply
@@ -162,12 +173,10 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         return self._task
 
     async def _follow(
-        self, sent: asyncio.Future, origin: int | None, target: int | None, send: Any
+        self, sent: asyncio.Future, origin: int | None, target: int, send: Any
     ) -> None:
         """Show where travel ends; send the movement again once if it never started."""
         accepted = getattr(await sent, "status", None) == foundation.Status.SUCCESS
-        if target is None:
-            return
         ends = functools.partial(_moved, origin, target)
         lift = await self._wait_for_lift(_arrival(origin, target), ends)
         if lift is None or not accepted or ends(lift) or not self._registered():
@@ -181,10 +190,7 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
     async def _wait_for_lift(
         self, delay: float, ends: Callable[[int], bool] | None = None
     ) -> int | None:
-        """Return a reported lift ``ends`` accepts (any, if None) within ``delay`` s.
-
-        If none comes, read the lift once.
-        """
+        """Wait ``delay`` s for a reported lift ``ends`` accepts, else read the lift."""
         with contextlib.suppress(TimeoutError):
             async with asyncio.timeout(delay):
                 while True:
@@ -198,7 +204,9 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
             success, _ = await self.read_attributes([LIFT.id], allow_cache=False)
         except ZigbeeException, TimeoutError:
             return None
-        return _lift(success.get(LIFT.id))
+        lift = _lift(success.get(LIFT.id))
+        self._confirmed = self._confirmed or lift is not None
+        return lift
 
     def handle_cluster_general_request(
         self, hdr: foundation.ZCLHeader, args: Any, **kwargs: Any
@@ -209,17 +217,16 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
             return
         for report in args.attribute_reports:
             lift = _lift(report.value.value) if report.attrid == LIFT.id else None
-            if (
-                lift is not None
-                and self._report is not None
-                and not self._report.done()
-            ):
+            if lift is None:
+                continue
+            self._confirmed = True
+            if self._report is not None and not self._report.done():
                 self._report.set_result(lift)
 
     def _legacy_apply_quirk_attribute_update(
         self, attr_def: foundation.ZCLAttributeDef, value: Any
     ) -> Any:
-        """Drop an unknown lift (0xFF) from a read or report, leaving the cache as is."""
+        """Ignore an unknown lift (0xFF) read or reported; the cache keeps its value."""
         if attr_def.id == LIFT.id and _lift(value) is None:
             return None
         return super()._legacy_apply_quirk_attribute_update(attr_def, value)
