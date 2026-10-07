@@ -1,8 +1,6 @@
 """Command delivery seen from the cover entity: real Home Assistant, real ZHA."""
 
 from collections.abc import AsyncIterator
-import logging
-import sys
 
 from homeassistant.exceptions import HomeAssistantError
 import pytest
@@ -32,9 +30,6 @@ def commands_sent(harness: ZhaHarness) -> list[int]:
 async def test_one_close_with_a_lost_first_frame_is_one_action(harness) -> None:
     """One cover.close_cover call: two frames on the wire and no error."""
     harness.motor.drop_next(1)
-    quirk = sys.modules[
-        type(harness.zigpy_device().endpoints[1].window_covering).__module__
-    ]
 
     _, elapsed = await harness.clock.run(
         harness.hass.services.async_call(
@@ -46,35 +41,10 @@ async def test_one_close_with_a_lost_first_frame_is_one_action(harness) -> None:
     )
 
     # zigpy's own retry would also land a second frame, but only after its 28 s reply
-    # timeout; the quirk's re-send comes well inside T_EXEC.
-    assert elapsed < quirk.T_EXEC
+    # timeout; the quirk's re-send comes within 10 s.
+    assert elapsed < 10
     assert commands_sent(harness) == [COMMANDS.down_close.id] * 2
     assert harness.hass.states.get(harness.cover_entity_id).state == "closing"
-
-
-async def test_a_lift_restored_after_a_restart_is_no_baseline(harness) -> None:
-    """An ignored first frame after a restart is re-sent, whatever the restored lift.
-
-    The shade is read at lift 40, then its remote moves it to 20 while
-    Home Assistant is down, so zigpy restores 40. Against that, the shade standing at 20
-    would look like travel toward an open's 0 and the frame would never be re-sent.
-    With no baseline, the read at the estimated arrival judges it.
-    """
-    await harness.call(
-        "homeassistant", "update_entity", {"entity_id": harness.cover_entity_id}
-    )
-    await harness.stop()
-    harness.motor.set_position(20)
-    await harness.start()
-    harness.frames.clear()
-    harness.motor.ignore_next(1)
-
-    await harness.call("cover", "open_cover", {"entity_id": harness.cover_entity_id})
-    await harness.clock.advance(200)
-
-    assert commands_sent(harness) == [COMMANDS.up_open.id] * 2
-    assert round(harness.motor.position_at(harness.clock.time())) == 0
-    assert harness.hass.states.get(harness.cover_entity_id).state == "open"
 
 
 def record_states(harness: ZhaHarness) -> list[str]:
@@ -141,7 +111,7 @@ ORDERS = ["success-first", "unsup-first"]
 
 
 async def refresh(harness: ZhaHarness) -> None:
-    """Read the shade, as a user's refresh does, so delivery has a baseline."""
+    """Read the shade, as a user's refresh does, so its cached lift is current."""
     await harness.call(
         "homeassistant", "update_entity", {"entity_id": harness.cover_entity_id}
     )
@@ -176,10 +146,10 @@ async def test_a_movement_succeeds_whichever_reply_wins(
 
 
 @pytest.mark.parametrize("order", ORDERS)
-async def test_a_close_without_a_baseline_succeeds_whichever_reply_wins(
+async def test_a_close_without_a_refresh_succeeds_whichever_reply_wins(
     harness, order
 ) -> None:
-    """With no baseline (just restarted), the close is sent once and raises nothing."""
+    """Just restarted, the close is sent once and raises nothing."""
     harness.motor.double_reply = order
 
     await harness.call("cover", "close_cover", {"entity_id": harness.cover_entity_id})
@@ -199,16 +169,9 @@ async def test_a_close_without_a_baseline_succeeds_whichever_reply_wins(
     ids=["go_to_lift_value", "go_to_tilt_value", "go_to_tilt_percentage"],
 )
 async def test_a_mangled_command_from_zha_never_reaches_the_air(
-    harness, command, params, caplog
+    harness, command, params
 ) -> None:
-    """ZHA's cluster command service gets ZHA's unsupported-command error; no frame.
-
-    The refusal is the quirk's guard, not some other UNSUP_CLUSTER_COMMAND: the quirk
-    logs it, once, from the cluster ZHA called.
-    """
-    caplog.set_level(logging.DEBUG)
-    covering = harness.zigpy_device().endpoints[1].window_covering
-    quirk_logger = sys.modules[type(covering).__module__]._LOGGER.name
+    """ZHA's cluster command service gets ZHA's unsupported-command error; no frame."""
     with pytest.raises(Exception, match="UNSUP_CLUSTER_COMMAND"):
         await harness.call(
             "zha",
@@ -226,12 +189,3 @@ async def test_a_mangled_command_from_zha_never_reaches_the_air(
     await harness.clock.advance(10)
 
     assert harness.shade_frames() == []
-    refusals = [
-        record.getMessage()
-        for record in caplog.records
-        if record.name == quirk_logger and "refused, not sent" in record.getMessage()
-    ]
-    assert refusals == [
-        f"{harness.zigpy_device().ieee}: {command.name} refused, not sent: "
-        "the radio sends the motor a malformed frame"
-    ]

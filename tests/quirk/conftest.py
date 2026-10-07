@@ -135,11 +135,6 @@ class Shade:
         """Return the decoded WindowCovering frames sent to a shade (see ``wire``)."""
         return wire(self.app, nwk)
 
-    def baseline(self) -> int | None:
-        """Return the lift the next movement would take as its baseline, if any."""
-        covering = self.covering
-        return covering._raw_lift if covering._raw_lift_is_baseline else None
-
     def commands(self, nwk: int = SHADE_NWK) -> list[tuple[Any, ...]]:
         """Return only the command frames (not reads) sent to a shade."""
         return [frame for frame in self.wire(nwk) if frame != READ]
@@ -152,22 +147,10 @@ class Shade:
 
 
 @pytest.fixture
-def started_shade(app: HarnessApp, clock: VirtualClock, wm25lz: ModuleType) -> Shade:
-    """Return the main shade as loaded at startup: its lift only restored, never read."""
+def shade(app: HarnessApp, clock: VirtualClock, wm25lz: ModuleType) -> Shade:
+    """Return the main shade at rest at INITIAL_LIFT, its lift restored to the cache."""
     assert app.motor is not None
     return Shade(app, clock, wm25lz, app.motor, covering_of(app, SHADE_IEEE))
-
-
-@pytest.fixture
-def shade(started_shade: Shade) -> Shade:
-    """Return the main shade with both shades' lift received since startup.
-
-    zigpy hands a reported lift to ``update_attribute``, as here, so delivery has the
-    seeded lift as its baseline.
-    """
-    for ieee in (SHADE_IEEE, OTHER_IEEE):
-        covering_of(started_shade.app, ieee).update_attribute(LIFT.id, INITIAL_LIFT)
-    return started_shade
 
 
 def covering_of(app: HarnessApp, ieee: t.EUI64) -> Any:
