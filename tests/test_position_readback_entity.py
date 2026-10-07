@@ -1,9 +1,9 @@
-"""The final position after travel, seen from the cover entity: real HA, real ZHA (#10).
+"""The final position after travel, seen from the cover entity: real HA, real ZHA.
 
-These motors never report their position. After every command the quirk reads it when
-travel should be over, so the cover shows where the shade stopped without a refresh
-(Part 3 §2i, F17). A move made with the remote shows after Home Assistant's stock
-refresh, ``homeassistant.update_entity``; nothing polls.
+After every command the quirk waits for the shade's report at the end of travel, and
+reads the lift if none comes, so the cover shows where the shade stopped without a
+refresh. A move made with the remote shows after Home Assistant's stock refresh,
+``homeassistant.update_entity``; nothing polls.
 """
 
 import asyncio
@@ -19,7 +19,7 @@ from tests.test_cover_entity import cover, cover_state, install_quirk, motor_lif
 from tests.zha_harness import ZhaHarness, open_zha_harness
 
 COMMANDS = WindowCovering.ServerCommandDefs
-# A full travel in 60 s, inside the measured 30-70 s (Part 1 §4).
+# A full travel in 60 s, inside the measured 30-70 s.
 FULL_TRAVEL_60_S = 100 / 60
 # Longer than any tracking: arrival plus confirmation, within TRACK_MAX_DURATION.
 AFTER_TRACKING_S = 120
@@ -29,7 +29,7 @@ AFTER_TRACKING_S = 120
 async def harness(tmp_path, hass_storage) -> AsyncIterator[ZhaHarness]:
     """Boot with the quirk installed and the shade fully open (HA position 100).
 
-    The shade is read once after startup, so delivery has a baseline (#27).
+    The shade is read once after startup, so delivery has a baseline.
     """
     async with open_zha_harness(tmp_path, hass_storage, initial_lift=0) as booted:
         await install_quirk(booted)
@@ -65,10 +65,10 @@ async def refresh(harness: ZhaHarness) -> None:
 
 
 async def test_a_close_shows_closed_once_the_shade_stops(harness) -> None:
-    """From HA 100, close_cover over a 60 s travel ends closed at 0 with no refresh (4.1).
+    """From HA 100, close_cover over a 60 s travel ends closed at 0 with no refresh.
 
-    Delivery reads nothing; the shade's report at the end of travel is the position
-    (#51), so no read is needed at all.
+    Delivery reads nothing; the shade's report at the end of travel is the position,
+    so no read is needed at all.
     """
     published = record_positions(harness)
 
@@ -76,7 +76,7 @@ async def test_a_close_shows_closed_once_the_shade_stops(harness) -> None:
     early = harness.cover_position()
     await harness.clock.advance(AFTER_TRACKING_S)
 
-    assert early == 100  # nothing read during travel (F17)
+    assert early == 100  # nothing read during travel
     assert motor_lift(harness) == 100
     assert cover_state(harness) == ("closed", 0)
     assert published[-1] == ("closed", 0)
@@ -86,7 +86,7 @@ async def test_a_close_shows_closed_once_the_shade_stops(harness) -> None:
 async def test_without_a_report_one_read_at_the_arrival_shows_the_end(
     harness,
 ) -> None:
-    """No report reaches the hub: one read at the estimated arrival shows closed (4.1)."""
+    """No report reaches the hub: one read at the estimated arrival shows closed."""
     harness.motor.reports = False
 
     await cover(harness, "close_cover")
@@ -97,10 +97,10 @@ async def test_without_a_report_one_read_at_the_arrival_shows_the_end(
 
 
 async def test_set_position_ends_at_the_real_position(harness) -> None:
-    """set_cover_position(40) ends open at 40 after the arrival read (4.3).
+    """set_cover_position(40) ends open at 40 after the arrival read.
 
     Before that read the card may show a stale mid-travel position: the accepted
-    cosmetic cost of reading sparsely (design D3), so only the end is asserted.
+    cosmetic cost of reading sparsely, so only the end is asserted.
     """
     await cover(harness, "set_cover_position", position=40)
     await harness.clock.advance(AFTER_TRACKING_S)
@@ -110,7 +110,7 @@ async def test_set_position_ends_at_the_real_position(harness) -> None:
 
 
 async def test_a_stall_short_of_the_target_shows_where_it_stopped(harness) -> None:
-    """A close that stalls at lift 45 settles there: open at 55 (Part 1 §3b)."""
+    """A close that stalls at lift 45 settles there: open at 55."""
     harness.motor.stall_at = 45
 
     await cover(harness, "close_cover")
@@ -154,7 +154,7 @@ async def test_a_new_command_supersedes_tracking(harness) -> None:
 
 
 async def test_a_remote_move_shows_after_a_refresh(harness) -> None:
-    """The remote moves the shade; update_entity reads it and the cover follows (4.4)."""
+    """The remote moves the shade; update_entity reads it and the cover follows."""
     harness.motor.set_position(70)
     await harness.clock.advance(60)
     assert harness.cover_position() == 100
@@ -166,14 +166,14 @@ async def test_a_remote_move_shows_after_a_refresh(harness) -> None:
 
 
 async def test_an_idle_hour_sends_nothing(harness) -> None:
-    """No command and no refresh: no frame reaches the shade in an hour (4.5)."""
+    """No command and no refresh: no frame reaches the shade in an hour."""
     await harness.clock.advance(3600)
 
     assert harness.shade_frames() == []
 
 
 async def test_a_refresh_after_a_restart_reads_the_position(harness) -> None:
-    """After a full restart, update_entity reads the shade's real position (4.6)."""
+    """After a full restart, update_entity reads the shade's real position."""
     harness.motor.set_position(70)
 
     await harness.restart()
@@ -190,7 +190,7 @@ async def test_a_first_close_after_a_restart_landing_short_ends_quietly(
 ) -> None:
     """After a restart nothing has been read, and the close settles one point short.
 
-    The cover shows where it stopped, with no WARNING (#30 review 1a).
+    The cover shows where it stopped, with no WARNING.
     """
     await harness.restart()
     harness.motor.stall_at = 99
@@ -224,11 +224,11 @@ async def test_a_restart_during_tracking_leaves_nothing_behind(harness) -> None:
 
 
 async def test_a_zha_reload_during_tracking_ends_it(harness) -> None:
-    """A ZHA reload mid-tracking ends the old tracker; the new cluster works (4.7).
+    """A ZHA reload mid-tracking ends the old tracker; the new cluster works.
 
     The tracker that would have read the end is gone, so the cache still holds the
     early look, lift 10 or so, while the shade closes to 100. That look is no baseline
-    for the next command, which succeeds without a refresh first (#27).
+    for the next command, which succeeds without a refresh first.
     """
     await cover(harness, "close_cover")
     await harness.clock.advance(10)

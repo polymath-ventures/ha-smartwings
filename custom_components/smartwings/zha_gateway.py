@@ -57,15 +57,11 @@ def async_custom_quirks_path(hass: HomeAssistant) -> Path | None:
 
 
 def zha_quirks_provide_quirk(custom_quirks_path: Path | None) -> bool:
-    """Return whether U is in ZHA's quirk registry from outside ``custom_quirks_path``.
+    """Return whether the quirk is in ZHA's quirk registry from outside ``custom_quirks_path``.
 
-    Reads the quirk registry ZHA has loaded: an entry for exactly the WM25/L-Z, with no
-    filter and no firmware bounds (so ZHA would apply it to every unit), that was not
-    loaded from ``custom_quirks_path`` (judged as ZHA's own purge of custom quirks
-    judges it), and whose quirk definition declares U's quirk ID. The integration's own
-    file in ``custom_quirks_path`` always wins over such an entry, so the device cannot
-    tell; the registry can. Nothing is imported or called, and no name is consulted.
-    The answer only ever adds a note; it never deletes a file.
+    That is an entry for exactly the WM25/L-Z, with no filter and no firmware bounds,
+    not loaded from ``custom_quirks_path``, whose definition exposes the quirk ID. The
+    device cannot tell, since the file in ``custom_quirks_path`` wins; the registry can.
     """
     return any(
         (SHADE_MANUFACTURER, SHADE_MODEL) in entry.device_match.applies_to
@@ -98,7 +94,7 @@ def _from_custom_quirks_path(
 
 
 def _declares_quirk_id(entry: zha.quirks.QuirkRegistryEntry) -> bool:
-    """Return whether a registry entry's quirk definition exposes U's quirk ID.
+    """Return whether a registry entry's quirk definition exposes the quirk ID.
 
     A quirks v2 entry carries its definition on its ZHA device factory
     (``QuirkV2Factory.quirk_definition``); anything else has none and answers False.

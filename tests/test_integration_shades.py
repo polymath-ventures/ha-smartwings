@@ -1,4 +1,4 @@
-"""Shade discovery and quirk activity through ZHA: real Home Assistant, real ZHA (#11)."""
+"""Shade discovery and quirk activity through ZHA: real Home Assistant, real ZHA."""
 
 import asyncio
 
@@ -22,7 +22,7 @@ from tests.zha_harness.harness import ZHA_ENTRY_ID
 SHADE = str(SHADE_IEEE)
 OTHER = str(OTHER_IEEE)
 
-# --- Discovery (D3) -------------------------------------------------------------------
+# --- Discovery ------------------------------------------------------------------------
 
 
 async def test_only_the_shade_is_tracked_on_zhas_own_device(
@@ -51,9 +51,7 @@ async def test_a_shade_paired_after_setup_is_tracked(zha_harness: ZhaHarness) ->
     tracked = asyncio.Event()
     shades.add_listener(lambda: OTHER in shades.shades and tracked.set())
     app = get_zha_gateway(zha_harness.hass).application_controller
-    app.motors[OTHER_NWK] = MotorSim(
-        position=40, rate_pct_per_s=5.0, commands_reversed=False
-    )
+    app.motors[OTHER_NWK] = MotorSim(position=40, rate_pct_per_s=5.0)
 
     # A join: zigpy announces the interviewed device, then ZHA configures it (the
     # unanswered binds time out in virtual time) and adds its entities.
@@ -83,7 +81,7 @@ async def test_a_removed_shade_is_dropped(zha_harness: ZhaHarness) -> None:
     assert updates and updates[-1] == {}
 
 
-# --- Quirk activity, by U's quirk ID (#54) -----------------------------------------
+# --- Quirk activity, by the quirk ID --------------------------------------------------
 
 
 async def test_status_is_not_active_with_the_released_quirk(
@@ -98,7 +96,7 @@ async def test_status_is_not_active_with_the_released_quirk(
 async def test_status_follows_the_quirk_across_a_zha_reload(
     zha_harness: ZhaHarness,
 ) -> None:
-    """U supplied, then ZHA reloaded: listeners hear of it and U is active."""
+    """Quirk supplied, then ZHA reloaded: listeners hear of it and it is active."""
     shades = await install(zha_harness)
     updates = record_updates(shades)
 
@@ -131,7 +129,7 @@ async def test_status_is_gateway_unavailable_while_zha_is_down(
 
 
 async def test_status_with_the_quirk_after_a_restart(zha_harness: ZhaHarness) -> None:
-    """U in custom_quirks_path at startup: the shade's quirk is active from setup."""
+    """The quirk in custom_quirks_path at startup: the shade's quirk is active from setup."""
     await supply_quirk(zha_harness)
     await zha_harness.restart()
 

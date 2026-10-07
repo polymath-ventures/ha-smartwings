@@ -2,16 +2,5 @@ __pycache__/
 *.pyc
 .DS_Store
 .pytest_cache/
-.claude/worktrees/
-.claude/skills/
-.claude/commands/
-.agents/skills/
-.agents/commands/
-.playwright-cli/
-/.reviewcache/
-/.reviewtmp/
-/TASK-PLAN.md
-/CLAUDE-ASSEMBLED.md*
-/AGENTS-ASSEMBLED.md*
-/GEMINI-ASSEMBLED.md*
 .venv/
+.claude/

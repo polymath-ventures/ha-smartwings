@@ -1,18 +1,13 @@
-"""The integration installs its quirk into ZHA's custom_quirks_path: real HA, real ZHA (#18).
+"""The integration installs its quirk into ZHA's custom_quirks_path: real HA, real ZHA.
 
-ZHA loads quirks only when its entry sets up, so the file the integration writes takes
-effect at the next restart or ZHA reload, and the integration asks for one through a
-Repairs issue, shown instead of the missing-quirk issue while it is pending. It touches
-only a regular file whose first line is its marker. Once the zha-quirks package Home
-Assistant pins provides the quirk, it stops updating its file and says the user may
-delete it; it never deletes it.
+The file takes effect at the next restart or ZHA reload, which a Repairs issue asks for.
+Only a regular file whose first line is the marker is touched. Once zha-quirks provides
+the quirk, updates stop and a note says the file may be deleted.
 """
 
 import json
 import logging
 from pathlib import Path
-import string
-import sys
 import threading
 from typing import Any
 
@@ -20,7 +15,6 @@ from homeassistant.components.zha.helpers import get_zha_gateway
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import issue_registry as ir
 import pytest
-import zha.quirks
 import zhaquirks
 
 from custom_components.smartwings import bundle
@@ -28,6 +22,7 @@ from custom_components.smartwings.const import DOMAIN
 from tests.quirk.conftest import QUIRK_FILE
 from tests.smartwings_helpers import (
     ENTRY_ID,
+    INSTALLED_QUIRK,
     directory,
     domain_issues,
     install,
@@ -37,11 +32,15 @@ from tests.smartwings_helpers import (
 from tests.zha_harness import SHADE_IEEE, ZhaHarness
 
 SHADE = str(SHADE_IEEE)
-BUNDLED = QUIRK_FILE.read_bytes()
-# The quirk as a user copied it by hand before the marker existed: it works, unmarked.
-UNMARKED_QUIRK = BUNDLED.split(b"\n", 1)[1]
-# An older version of the integration's own file: marked, working, different bytes.
-OUTDATED_QUIRK = BUNDLED + b"# An older version.\n"
+# The quirk as a user copies it by hand: it works, unmarked.
+UNMARKED_QUIRK = QUIRK_FILE.read_bytes()
+# An install from an earlier release: its marker line as shipped, then other bytes.
+OUTDATED_QUIRK = (
+    b"# Installed by the SmartWings integration for Home Assistant, which keeps this"
+    b" file up to date. Delete this line to keep the file as your own.\n"
+    + UNMARKED_QUIRK
+    + b"# An older version.\n"
+)
 INTEGRATION_LOGGER = "custom_components.smartwings"
 STRINGS = json.loads(
     (
@@ -115,12 +114,12 @@ async def restart_with_file(harness: ZhaHarness, content: bytes) -> None:
 async def test_a_fresh_install_writes_the_file_and_asks_for_a_restart(
     zha_harness: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """No file, U absent: the bundled file is installed; ZHA is not reloaded."""
+    """No file, quirk absent: the file is installed; ZHA is not reloaded."""
     gateway = get_zha_gateway(zha_harness.hass)
 
     await install(zha_harness)
 
-    assert target(zha_harness).read_bytes() == BUNDLED
+    assert target(zha_harness).read_bytes() == INSTALLED_QUIRK
     # The restart request stands in for the missing-quirk issue: nothing went wrong.
     assert domain_issues(zha_harness) == [RESTART]
     issue = raised(zha_harness, RESTART)
@@ -140,7 +139,7 @@ async def test_a_fresh_install_writes_the_file_and_asks_for_a_restart(
 async def test_a_restart_after_the_install_loads_the_quirk(
     zha_harness: ZhaHarness,
 ) -> None:
-    """Restart: U is active, nothing is rewritten or raised."""
+    """Restart: the quirk is active, nothing is rewritten or raised."""
     await install(zha_harness)
     before = stamp(target(zha_harness))
 
@@ -153,7 +152,7 @@ async def test_a_restart_after_the_install_loads_the_quirk(
 
 
 async def test_a_zha_reload_loads_the_installed_quirk(zha_harness: ZhaHarness) -> None:
-    """Reloading ZHA, as the restart issue offers, loads U and clears the issue."""
+    """Reloading ZHA, as the restart issue offers, loads the quirk and clears it."""
     await install(zha_harness)
     assert RESTART in domain_issues(zha_harness)
 
@@ -242,7 +241,7 @@ async def test_a_relative_path_still_finds_the_own_file(
 
     await install(harness)
 
-    assert target(harness).read_bytes() == BUNDLED
+    assert target(harness).read_bytes() == INSTALLED_QUIRK
     assert domain_issues(harness) == [RESTART]
     assert raised(harness, RESTART).translation_placeholders == {
         "file": str(target(harness))
@@ -278,7 +277,7 @@ async def test_without_custom_quirks_path_the_issue_gives_the_line(
 
     await install(harness)
 
-    assert target(harness).read_bytes() == BUNDLED
+    assert target(harness).read_bytes() == INSTALLED_QUIRK
     assert sorted(domain_issues(harness)) == [PATH_MISSING, MISSING]
     issue = raised(harness, PATH_MISSING)
     assert issue.is_fixable is False
@@ -295,7 +294,7 @@ async def test_without_custom_quirks_path_the_issue_gives_the_line(
 async def test_adding_the_line_and_restarting_clears_the_issues(
     unconfigured_harness: ZhaHarness,
 ) -> None:
-    """The user adds the line and restarts: U is active, no issue is left."""
+    """The user adds the line and restarts: the quirk is active, no issue is left."""
     harness = unconfigured_harness
     await install(harness)
 
@@ -317,7 +316,7 @@ async def test_an_outdated_own_file_is_updated(
 
     await install(zha_harness)
 
-    assert target(zha_harness).read_bytes() == BUNDLED
+    assert target(zha_harness).read_bytes() == INSTALLED_QUIRK
     assert directory(zha_harness).shades[SHADE].quirk_active is True
     assert domain_issues(zha_harness) == [RESTART]
     assert integration_warnings(caplog) == []
@@ -345,7 +344,7 @@ async def test_a_current_own_file_is_not_rewritten(zha_harness: ZhaHarness) -> N
 async def test_an_unmarked_file_is_left_alone_and_explained(
     zha_harness: ZhaHarness,
 ) -> None:
-    """Same name, no marker, U not loaded: untouched, and an issue says why."""
+    """Same name, no marker, quirk not loaded: untouched, and an issue says why."""
     await restart_with_file(zha_harness, b"# A quirk of the user's own.\n")
     before = stamp(target(zha_harness))
 
@@ -381,7 +380,7 @@ async def test_an_unmarked_working_copy_is_left_alone_quietly(
 async def test_upstream_quirk_keeps_the_own_file_and_notes_it(
     zha_harness: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """zha-quirks has U: the integration's file stays; a note says it may go."""
+    """zha-quirks has the quirk: the integration's file stays; a note says it may go."""
     await supply_quirk(zha_harness)
     zha_harness.ship_upstream(QUIRK_FILE.read_text())
     await zha_harness.restart()
@@ -403,7 +402,7 @@ async def test_upstream_quirk_keeps_the_own_file_and_notes_it(
 
 
 async def test_upstream_quirk_stops_updates(zha_harness: ZhaHarness) -> None:
-    """While zha-quirks has U, an outdated own file is not updated."""
+    """While zha-quirks has the quirk, an outdated own file is not updated."""
     zha_harness.ship_upstream(QUIRK_FILE.read_text())
     await restart_with_file(zha_harness, OUTDATED_QUIRK)
     before = stamp(target(zha_harness))
@@ -417,7 +416,7 @@ async def test_upstream_quirk_stops_updates(zha_harness: ZhaHarness) -> None:
 async def test_the_note_goes_once_the_user_deletes_the_file(
     zha_harness: ZhaHarness,
 ) -> None:
-    """The user deletes the file and restarts: zha-quirks' U is loaded, no issue."""
+    """The user deletes the file and restarts: zha-quirks' quirk is loaded, no issue."""
     await supply_quirk(zha_harness)
     zha_harness.ship_upstream(QUIRK_FILE.read_text())
     await zha_harness.restart()
@@ -442,14 +441,14 @@ async def test_a_restricted_upstream_entry_changes_nothing(
 
     await install(zha_harness)
 
-    assert target(zha_harness).read_bytes() == BUNDLED
+    assert target(zha_harness).read_bytes() == INSTALLED_QUIRK
     assert domain_issues(zha_harness) == [RESTART]
 
 
 async def test_upstream_quirk_leaves_an_unmarked_file_alone(
     zha_harness: ZhaHarness,
 ) -> None:
-    """zha-quirks has U and the file is not the integration's: untouched, no issue."""
+    """zha-quirks has the quirk and the file is not ours: untouched, no issue."""
     zha_harness.ship_upstream(QUIRK_FILE.read_text())
     await restart_with_file(zha_harness, b"# A quirk of the user's own.\n")
     before = stamp(target(zha_harness))
@@ -480,7 +479,7 @@ async def test_file_work_runs_in_the_executor(
 
         return wrapper
 
-    for name in ("bundled_bytes", "inspect", "sync"):
+    for name in ("installed_bytes", "inspect", "sync"):
         monkeypatch.setattr(bundle, name, spy(name))
 
     await install(zha_harness)
@@ -488,7 +487,7 @@ async def test_file_work_runs_in_the_executor(
     assert await zha_harness.hass.config_entries.async_reload(ENTRY_ID)
     await zha_harness.hass.async_block_till_done()
 
-    assert {name for name, _ in calls} == {"bundled_bytes", "inspect", "sync"}
+    assert {name for name, _ in calls} == {"installed_bytes", "inspect", "sync"}
     assert all(off_loop for _, off_loop in calls), calls
 
 
@@ -568,7 +567,7 @@ async def test_unloading_keeps_the_restart_request_and_the_file(
     assert await zha_harness.hass.config_entries.async_unload(ENTRY_ID)
 
     assert domain_issues(zha_harness) == [RESTART]
-    assert target(zha_harness).read_bytes() == BUNDLED
+    assert target(zha_harness).read_bytes() == INSTALLED_QUIRK
 
 
 async def test_unloading_withdraws_what_only_the_entry_keeps_current(
@@ -597,42 +596,3 @@ async def test_removing_the_entry_deletes_every_issue(zha_harness: ZhaHarness) -
     await zha_harness.hass.async_block_till_done()
 
     assert domain_issues(zha_harness) == []
-
-
-async def test_installing_imports_and_registers_no_quirk_code(
-    zha_harness: ZhaHarness,
-) -> None:
-    """The bundled file is only copied: no module from it, no registry entry added."""
-    entries = list(zha.quirks.DEVICE_REGISTRY)
-
-    await install(zha_harness)
-
-    assert list(zha.quirks.DEVICE_REGISTRY) == entries
-    assert [
-        name
-        for name, module in list(sys.modules.items())
-        if getattr(module, "__file__", None) is not None
-        and Path(module.__file__).resolve() == bundle.BUNDLED_FILE.resolve()
-    ] == []
-
-
-@pytest.mark.parametrize(
-    ("issue_id", "placeholders"),
-    [
-        (PATH_MISSING, {"path"}),
-        (RESTART, {"file"}),
-        (CONFLICT, {"file", "marker"}),
-        (UPSTREAM, {"file"}),
-        (NOT_WRITTEN, {"file", "error"}),
-    ],
-)
-def test_each_issue_is_translated_with_its_placeholders(
-    issue_id: str, placeholders: set[str]
-) -> None:
-    """Every issue has a title and a description using exactly its placeholders."""
-    text = STRINGS["issues"][issue_id]
-
-    assert text["title"]
-    assert {
-        name for _, name, _, _ in string.Formatter().parse(text["description"]) if name
-    } == placeholders

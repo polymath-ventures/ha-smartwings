@@ -1,43 +1,27 @@
-"""A model of one WM25/L-Z motor, behaving as measured on the real shades (docs Part 1).
+"""A model of one WM25/L-Z motor, as measured on the real shades.
 
-Position is in ZCL lift space (0 = fully open, 100 = fully closed) and is a pure function
-of the loop's clock, so it advances with virtual time and needs no ticking task. The model
-follows the measured departures from the WindowCovering cluster that later tests rely on:
+See docs/device-behavior.md and docs/evidence/firmware-analysis.md. Position is in ZCL
+lift space (0 = fully open, 100 = fully closed) and is a pure function of the loop's
+clock, so it advances with virtual time and needs no ticking task. Modelled behaviour:
 
-* the first frame(s) after idle can be dropped (``drop_next``), Part 1 §3e;
-* lift 0 and 100 are the upper and lower limits set with the remote, and the motor
-  scales go-tos between them, so ``down_close`` and a go-to 100 both stop at the lower
-  limit, reported as 100 (#54; Part 1 §3a);
-* Stop is answered with UNSUP_CLUSTER_COMMAND, and the motor halts (``stop_halts``):
-  observed live on 2026-10-06 (#51), Part 1 §3d;
-* the radio answers a read of the lift from its own copy, which changes only when the
-  motor sends a position, and the motor sends one only when travel ends, at its target, a
-  stall or a Stop (``radio_cache``; #51, firmware analysis §4). A read during travel
-  returns the lift from before the move. ``report_interval_s`` adds positions sent during
-  travel, which no measurement has shown;
-* each position the motor sends is pushed to the coordinator as a Report Attributes
-  (``reports``; #51, Part 1 §3f), but only when it differs from the radio's copy, so a
-  go-to where the shade already is reports nothing. The radio stub schedules it
-  ``report_latency`` (default ``reply_latency``) after the event, for travel commanded
-  over the air; a report the motor has sent still arrives after a later command. A move
+* lift 0 and 100 are the limits set with the remote; ``down_close`` and a go-to 100 both
+  stop at the lower limit, reported as 100;
+* Stop is answered with UNSUP_CLUSTER_COMMAND, and the motor halts;
+* the radio answers a lift read from its own copy, which changes only when the motor
+  sends a position: at the end of travel, a stall or a Stop. ``report_interval_s`` adds
+  positions sent during travel;
+* each position sent is pushed as a Report Attributes (``reports``) when it differs from
+  the radio's copy, ``report_latency`` (default ``reply_latency``) after the event. A move
   set with ``start_moving`` or ``set_position`` pushes nothing;
 * a manufacturer-specific Window Covering command is refused with UNSUP_CLUSTER_COMMAND
-  alone and not acted on (firmware analysis §2, "Hidden extensions").
+  and not acted on;
+* with ``double_reply``, each handled command draws SUCCESS and UNSUP_CLUSTER_COMMAND with
+  the same TSN, in either order, or only the 0x81; without it the motor answers once.
 
-The radio firmware answers every Window Covering command it has a handler for twice, with
-the same TSN: Default Response SUCCESS, then UNSUP_CLUSTER_COMMAND (firmware analysis
-§3). Which one zigpy matches depends on which arrives first, so ``double_reply`` sends
-both, in either order, or only the 0x81 (the SUCCESS lost on the air); without it the
-motor answers once, as Part 1 recorded.
-
-Delivery tests also script departures no measurement has pinned down yet: a stuck motor
-that acknowledges commands and does not move (``ignore_commands``), a motor that
-acknowledges the next movement frames and ignores them, the first-frame loss of Part 1
-§3e as the firmware suggests it (``ignore_next``), a late start
-(``start_delay``), scripted answers to the next lift reads (``script_lift_reads``), a
-radio that raises on send (``fail_next_sends``), a shade already travelling when a
-command arrives (``start_moving``) and a stall partway through travel (``stall_at``,
-Part 1 §3b).
+Tests can also script departures: dropped frames (``drop_next``), acknowledged but ignored
+frames (``ignore_commands``, ``ignore_next``), a late start (``start_delay``), scripted
+lift reads (``script_lift_reads``), send failures (``fail_next_sends``), travel already
+under way (``start_moving``) and a stall (``stall_at``).
 """
 
 from __future__ import annotations
@@ -60,7 +44,7 @@ _MOVEMENT_COMMANDS = (
     _COMMANDS.go_to_lift_percentage.id,
 )
 _LIFT_ID = WindowCovering.AttributeDefs.current_position_lift_percentage.id
-# The Window Covering commands the radio has a handler for (firmware analysis §3): each
+# The Window Covering commands the radio has a handler for: each
 # draws SUCCESS, then UNSUP_CLUSTER_COMMAND. IDs 3 and 6 and any other get only the 0x81.
 FIRMWARE_HANDLED_COMMANDS = frozenset({0x00, 0x01, 0x02, 0x04, 0x05, 0x07, 0x08})
 DoubleReply = Literal["success-first", "unsup-first", "unsup-only"]
@@ -73,24 +57,15 @@ class MotorSim:
     position: float = 50.0
     rate_pct_per_s: float = 5.0
     reply_latency: float = 1.0
-    # Whether raw up_open (0x00) lowers the shade and down_close (0x01) raises it, the
-    # premise of the vendor quirk's swap. The real units are not reversed: raw down_close
-    # lowers them (Part 1 §3c, test 8a; #34), so a motor is not unless a test says so.
-    commands_reversed: bool = False
     # Acknowledge movement commands with SUCCESS but never move: a stuck shade.
     ignore_commands: bool = False
     # Seconds between an obeyed movement command and the start of travel.
     start_delay: float = 0.0
-    # A lift where any travel through it stops short of its target (Part 1 §3b).
+    # A lift where any travel through it stops short of its target.
     stall_at: float | None = None
     # Answer each handled command with both of the firmware's Default Responses, in
     # this order, or with only the 0x81 ("unsup-only"); None answers once.
     double_reply: DoubleReply | None = None
-    # Whether Stop halts the motor where it is (#51); without, motion continues.
-    stop_halts: bool = True
-    # Whether reads answer the radio's copy of the lift, updated only when the motor sends
-    # a position (end of travel, stall, Stop); without, they answer the live position.
-    radio_cache: bool = True
     # Seconds between positions the motor sends during travel; None sends none.
     report_interval_s: float | None = None
     # Whether the positions the motor sends are pushed to the coordinator as reports.
@@ -220,9 +195,7 @@ class MotorSim:
         return times
 
     def cached_at(self, now: float) -> float:
-        """Return the lift a read answers at loop time ``now`` (see ``radio_cache``)."""
-        if not self.radio_cache:
-            return self.position_at(now)
+        """Return the lift a read answers at loop time ``now``: the radio's copy."""
         sent = self._sent_positions(-math.inf, now)
         if not sent:
             return self._cached
@@ -258,15 +231,13 @@ class MotorSim:
             self._ignore_remaining = max(0, self._ignore_remaining - 1)
             return _default_response(frame, foundation.Status.SUCCESS)
         if frame.command_id in (_COMMANDS.up_open.id, _COMMANDS.down_close.id):
-            lowers = (
-                frame.command_id == _COMMANDS.down_close.id
-            ) != self.commands_reversed
+            lowers = frame.command_id == _COMMANDS.down_close.id
             self._move_to(100.0 if lowers else 0.0, now)
         elif frame.command_id == _COMMANDS.go_to_lift_percentage.id:
             self._move_to(float(frame.args["percentage_lift_value"]), now)
         elif frame.command_id == _COMMANDS.stop.id:
             # A shade at rest has nothing to halt and sends nothing.
-            if self.stop_halts and now < self.ends_at():
+            if now < self.ends_at():
                 self.halt(now)
             return _default_response(frame, foundation.Status.UNSUP_CLUSTER_COMMAND)
         else:

@@ -6,7 +6,7 @@
   "dependencies": ["zha"],
   "documentation": "https://github.com/polymath-ventures/ha-smartwings",
   "integration_type": "hub",
-  "iot_class": "local_polling",
+  "iot_class": "calculated",
   "issue_tracker": "https://github.com/polymath-ventures/ha-smartwings/issues",
   "requirements": [],
   "single_config_entry": true,

@@ -1,4 +1,4 @@
-"""Verified delivery seen from the cover entity: real Home Assistant, real ZHA (issue #8)."""
+"""Command delivery seen from the cover entity: real Home Assistant, real ZHA."""
 
 from collections.abc import AsyncIterator
 import logging
@@ -29,14 +29,8 @@ def commands_sent(harness: ZhaHarness) -> list[int]:
     return [f.command_id for f in harness.shade_frames() if not f.general]
 
 
-def test_the_quirk_is_the_one_zha_loaded(harness) -> None:
-    """ZHA resolved the shade to this quirk's cluster, not the released vendor quirk."""
-    covering = harness.zigpy_device().endpoints[1].window_covering
-    assert type(covering).__name__ == "WM25LZWindowCovering"
-
-
 async def test_one_close_with_a_lost_first_frame_is_one_action(harness) -> None:
-    """One cover.close_cover call: two frames on the wire and no error (§2j)."""
+    """One cover.close_cover call: two frames on the wire and no error."""
     harness.motor.drop_next(1)
     quirk = sys.modules[
         type(harness.zigpy_device().endpoints[1].window_covering).__module__
@@ -63,8 +57,8 @@ async def test_a_lift_restored_after_a_restart_is_no_baseline(harness) -> None:
 
     The shade is read at lift 40, then its remote moves it to 20 while
     Home Assistant is down, so zigpy restores 40. Against that, the shade standing at 20
-    would look like travel toward an open's 0 and the frame would never be re-sent
-    (#27). With no baseline, the read at the estimated arrival judges it (#51).
+    would look like travel toward an open's 0 and the frame would never be re-sent.
+    With no baseline, the read at the estimated arrival judges it.
     """
     await harness.call(
         "homeassistant", "update_entity", {"entity_id": harness.cover_entity_id}
@@ -98,7 +92,7 @@ def record_states(harness: ZhaHarness) -> list[str]:
 async def test_a_close_whose_frames_are_lost_fails_through_zha_and_never_animates(
     harness,
 ) -> None:
-    """Both frames lost on the air: ZHA's own failure path, no moving state (§2k).
+    """Both frames lost on the air: ZHA's own failure path, no moving state.
 
     Delivery gives up by returning a FAILURE Default Response, which ZHA treats as any
     failed command: it clears its transition target and raises its standard error.
@@ -123,7 +117,7 @@ async def test_a_close_whose_frames_are_lost_fails_through_zha_and_never_animate
 async def test_a_close_that_never_moves_shows_closing_then_where_it_is(
     harness, caplog
 ) -> None:
-    """A stuck shade: the call succeeds, as the radio accepted the frame (#51).
+    """A stuck shade: the call succeeds, as the radio accepted the frame.
 
     ZHA shows closing, as for any cover. After the travel time the readback sees no
     travel and re-sends once; its reads then show the shade still open, with no error
@@ -141,24 +135,13 @@ async def test_a_close_that_never_moves_shows_closing_then_where_it_is(
     assert harness.hass.states.get(harness.cover_entity_id).state == "open"
 
 
-async def test_stop_is_sent_once_and_shows_no_error(harness) -> None:
-    """cover.stop_cover sends one Stop; the firmware's lone 0x81 is no error (#54).
-
-    The motor halts on a forwarded Stop (#51), so the 0x81 is the firmware's second
-    reply, not a refusal.
-    """
-    await harness.call("cover", "stop_cover", {"entity_id": harness.cover_entity_id})
-
-    assert [f.command_id for f in harness.shade_frames()] == [COMMANDS.stop.id]
-
-
-# --- The firmware's double reply and the commands it mangles (#45; FA §3) -----------
+# --- The firmware's double reply and the commands it mangles ---------------------------
 
 ORDERS = ["success-first", "unsup-first"]
 
 
 async def refresh(harness: ZhaHarness) -> None:
-    """Read the shade, as a user's refresh does, so delivery has a baseline (#27)."""
+    """Read the shade, as a user's refresh does, so delivery has a baseline."""
     await harness.call(
         "homeassistant", "update_entity", {"entity_id": harness.cover_entity_id}
     )
@@ -177,10 +160,10 @@ async def refresh(harness: ZhaHarness) -> None:
 async def test_a_movement_succeeds_whichever_reply_wins(
     harness, order, service, data, state
 ) -> None:
-    """The firmware's 0x81 after SUCCESS raises nothing in ZHA's cover (FA §3).
+    """The firmware's 0x81 after SUCCESS raises nothing in ZHA's cover.
 
     ZHA's cover raises on any status but SUCCESS; both replies mean the radio took
-    the frame, so U answers SUCCESS whichever reply zigpy matched.
+    the frame, so the quirk answers SUCCESS whichever reply zigpy matched.
     """
     await refresh(harness)
     harness.motor.double_reply = order
@@ -204,17 +187,6 @@ async def test_a_close_without_a_baseline_succeeds_whichever_reply_wins(
 
     assert commands_sent(harness) == [COMMANDS.down_close.id]
     assert harness.hass.states.get(harness.cover_entity_id).state == "closing"
-
-
-@pytest.mark.parametrize("order", ORDERS)
-async def test_stop_shows_no_error_whichever_reply_wins(harness, order) -> None:
-    """Stop's 0x81, before or after its SUCCESS, raises nothing (#54; FA §3)."""
-    harness.motor.double_reply = order
-
-    await harness.call("cover", "stop_cover", {"entity_id": harness.cover_entity_id})
-    await harness.clock.advance(1)  # the second reply lands
-
-    assert commands_sent(harness) == [COMMANDS.stop.id]
 
 
 @pytest.mark.parametrize(

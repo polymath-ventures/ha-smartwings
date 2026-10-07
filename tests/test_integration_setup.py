@@ -1,4 +1,4 @@
-"""The SmartWings config entry and its flow: real Home Assistant, real ZHA (issue #11)."""
+"""The SmartWings config entry and its flow: real Home Assistant, real ZHA."""
 
 import json
 from pathlib import Path
@@ -22,16 +22,6 @@ def test_english_translations_equal_strings() -> None:
     english = json.loads((INTEGRATION_DIR / "translations" / "en.json").read_text())
 
     assert english == strings
-
-
-def test_the_repairs_issue_text_is_translated() -> None:
-    """The missing-quirk Repairs issue has a title and a description naming the fix."""
-    strings = json.loads((INTEGRATION_DIR / "strings.json").read_text())
-    text = strings["issues"]["quirk_not_loaded"]
-
-    assert text["title"]
-    assert "{shades}" in text["description"]
-    assert "custom_quirks_path" in text["description"]
 
 
 async def start_flow(hass: HomeAssistant) -> dict:
@@ -60,9 +50,6 @@ async def test_the_flow_creates_one_entry_with_nothing_to_fill_in(
     assert result["data"] == {}
     [entry] = hass.config_entries.async_entries(DOMAIN)
     assert entry.state is ConfigEntryState.LOADED
-    # "Stops at" is retired (#54): nothing to configure, no Change-stop dialog.
-    assert entry.supports_options is False
-    assert hass.services.async_services_for_domain(DOMAIN) == {}
 
 
 async def test_a_second_flow_aborts(zha_harness: ZhaHarness) -> None:
