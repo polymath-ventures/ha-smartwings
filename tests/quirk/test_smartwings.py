@@ -465,3 +465,70 @@ async def test_a_lost_stop_is_sent_once(shade) -> None:
 
     assert isinstance(result, (TimeoutError, zigpy.exceptions.ZigbeeException))
     assert shade.commands() == [STOP]
+
+
+@pytest.mark.parametrize(
+    ("command", "args", "manufacturer"),
+    [
+        (COMMANDS.go_to_lift_value, (1000,), None),
+        (COMMANDS.go_to_tilt_percentage, (30,), None),
+        (COMMANDS.up_open, (), 0x1002),
+    ],
+    ids=["lift-value", "tilt-percentage", "mfr-open"],
+)
+async def test_a_raw_request_is_refused_too(shade, command, args, manufacturer) -> None:
+    """Sent through request(), a mangled command is refused unsent all the same."""
+    result, _ = await shade.outcome(
+        shade.covering.request(
+            False, command.id, command.schema, *args, manufacturer=manufacturer
+        ),
+        within=1,
+    )
+
+    assert status(result) == UNSUP
+    assert shade.wire() == []
+
+
+async def test_a_removed_shade_is_left_alone(shade) -> None:
+    """Once zigpy removes the device, its follow-up neither reads nor re-sends."""
+    shade.motor.reports = False
+    shade.motor.ignore_next(1)
+    assert await go_to(shade, 80) == SUCCESS
+
+    await shade.app.remove(SHADE_IEEE)
+    await shade.clock.advance(SETTLED_S)
+
+    assert SHADE_IEEE not in shade.app.devices
+    assert shade.wire() == [GO_80]
+
+
+async def test_a_reversal_during_travel_waits_for_a_full_travel(shade) -> None:
+    """A movement that interrupts travel does not judge it from the stale cached lift.
+
+    A slow shade heading for 0 is turned back to 45 three seconds in. Judged from the
+    cached 40, the read would come 6.5 s later, while the radio still answers 40, and
+    the frame would be sent again to a moving shade.
+    """
+    shade.motor.reports = False
+    shade.motor.rate_pct_per_s = 1.0
+    assert await go_to(shade, 0) == SUCCESS
+    await shade.clock.advance(2)
+    assert await go_to(shade, 45) == SUCCESS
+
+    await shade.clock.advance(73 - JITTER_S)
+    assert READ not in shade.wire()
+    await shade.clock.advance(SETTLED_S)
+
+    go_to_45 = ("go_to_lift_percentage", 45)
+    assert shade.wire() == [("go_to_lift_percentage", 0), go_to_45, READ]
+    assert shade.covering.get(LIFT.id) == 45
+
+
+async def test_a_stale_report_does_not_end_the_wait(shade) -> None:
+    """A report of the old position during travel is not its end: no re-send."""
+    assert await go_to(shade, 80) == SUCCESS
+    report(shade, INITIAL_LIFT)
+    await shade.clock.advance(SETTLED_S)
+
+    assert shade.wire() == [GO_80]
+    assert shade.covering.get(LIFT.id) == 80

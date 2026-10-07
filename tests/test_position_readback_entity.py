@@ -266,3 +266,23 @@ async def test_a_zha_reload_during_delivery_starts_no_tracking(harness) -> None:
         for task in asyncio.all_tasks()
         if "position readback" in task.get_name() and not task.done()
     ]
+
+
+async def test_a_zha_reload_during_a_resend_pause_sends_nothing_more(harness) -> None:
+    """The first frame is lost and ZHA reloads in the pause: no second frame."""
+    harness.motor.drop_next(1)
+    close = asyncio.ensure_future(
+        harness.hass.services.async_call(
+            "cover", "close_cover", {"entity_id": harness.cover_entity_id}, True
+        )
+    )
+    await harness.clock.advance(6)
+
+    await harness.reload_zha()
+    with contextlib.suppress(HomeAssistantError):
+        await harness.run(close)
+    await harness.clock.advance(AFTER_TRACKING_S)
+
+    assert [f.command_id for f in harness.shade_frames() if not f.general] == [
+        COMMANDS.down_close.id
+    ]

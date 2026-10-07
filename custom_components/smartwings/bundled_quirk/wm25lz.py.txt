@@ -7,7 +7,7 @@ its position only when travel ends, so a read during travel shows where it start
 """
 
 import asyncio
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 import contextlib
 import functools
 import logging
@@ -66,11 +66,16 @@ def _arrival(origin: int | None, target: int) -> float:
     return max(MIN_WAIT, distance / 100 * FULL_TRAVEL + ARRIVAL_MARGIN)
 
 
-def _moved(origin: int | None, lift: int, target: int) -> bool:
+def _moved(origin: int | None, target: int, lift: int) -> bool:
     """Return whether ``lift`` is at ``target`` or shows travel toward it."""
     if abs(lift - target) <= AT_TARGET:
         return True
     return origin is not None and abs(target - lift) <= abs(target - origin) - MOVED
+
+
+def _live(task: asyncio.Task | None) -> bool:
+    """Return whether ``task`` exists and is neither finished nor being cancelled."""
+    return task is not None and not task.done() and not task.cancelling()
 
 
 class WM25LZWindowCovering(CustomCluster, WindowCovering):
@@ -82,13 +87,23 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         self._task: asyncio.Task | None = None  # what follows the latest command
         self._report: asyncio.Future[int] | None = None
 
-    async def command(self, command_id: Any, *args: Any, **kwargs: Any) -> Any:
-        """Send a command, compensating for the radio and the motor."""
+    async def request(
+        self, general: bool, command_id: Any, schema: Any, *args: Any, **kwargs: Any
+    ) -> Any:
+        """Refuse, unsent, what the radio mangles or does not forward."""
         standard = kwargs.get("manufacturer") in (None, UNDEFINED)
-        if command_id in REFUSED or (command_id in MOVES and not standard):
+        if not general and (
+            command_id in REFUSED or (command_id in MOVES and not standard)
+        ):
             _LOGGER.debug("Refusing command 0x%02x, not sent", command_id)
             return _response(command_id, foundation.Status.UNSUP_CLUSTER_COMMAND)
-        if command_id == STOP and standard:
+        return await super().request(general, command_id, schema, *args, **kwargs)
+
+    async def command(self, command_id: Any, *args: Any, **kwargs: Any) -> Any:
+        """Send a command, compensating for the radio and the motor."""
+        if kwargs.get("manufacturer") not in (None, UNDEFINED):
+            return await super().command(command_id, *args, **kwargs)
+        if command_id == STOP:
             self._start(self._wait_for_lift(STOP_WAIT))
             return await self._send(command_id, *args, **kwargs)
         if command_id in MOVES:
@@ -100,9 +115,11 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         target = MOVES[command_id]
         if command_id == GO_TO_LIFT:
             target = _lift(args[0] if args else kwargs.get("percentage_lift_value"))
+        # While earlier travel may be under way, the cached lift is from before it.
+        origin = None if _live(self._task) else _lift(self.get(LIFT.id))
         send = functools.partial(self._send, command_id, *args, **kwargs)
         sent = asyncio.get_running_loop().create_future()
-        task = self._start(self._follow(sent, _lift(self.get(LIFT.id)), target, send))
+        task = self._start(self._follow(sent, origin, target, send))
         try:
             reply = await self._deliver(command_id, send, task)
             if not sent.done():
@@ -118,7 +135,7 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         except (DeliveryError, TimeoutError) as exc:
             _LOGGER.debug("Command 0x%02x lost (%r), sending again", command_id, exc)
         await asyncio.sleep(RESEND_DELAY)
-        if self._task is task:
+        if _live(task) and self._registered():
             with contextlib.suppress(DeliveryError, TimeoutError):
                 return await send()
         return _response(command_id, foundation.Status.FAILURE)
@@ -131,12 +148,17 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
             return _response(command_id, foundation.Status.SUCCESS)
         return reply
 
+    def _registered(self) -> bool:
+        """Return whether zigpy still holds this cluster's device (not removed)."""
+        device = self.endpoint.device
+        return device.application.devices.get(device.ieee) is device
+
     def _start(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task:
         """Cancel this shade's pending work and run ``coro`` in its place."""
         if self._task is not None:
             self._task.cancel()
-        app = self.endpoint.device.application
-        self._task = app.create_task(coro, name=f"{self.endpoint.device.ieee} lift")
+        device = self.endpoint.device
+        self._task = device.application.create_task(coro, name="position readback")
         return self._task
 
     async def _follow(
@@ -146,20 +168,32 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         accepted = getattr(await sent, "status", None) == foundation.Status.SUCCESS
         if target is None:
             return
-        lift = await self._wait_for_lift(_arrival(origin, target))
-        if lift is None or not accepted or _moved(origin, lift, target):
+        ends = functools.partial(_moved, origin, target)
+        lift = await self._wait_for_lift(_arrival(origin, target), ends)
+        if lift is None or not accepted or ends(lift) or not self._registered():
             return
         _LOGGER.debug("No travel toward lift %s seen (at %s); re-sending", target, lift)
         with contextlib.suppress(ZigbeeException, TimeoutError):
             await send()
-        await self._wait_for_lift(_arrival(lift, target))
+        ends = functools.partial(_moved, lift, target)
+        await self._wait_for_lift(_arrival(lift, target), ends)
 
-    async def _wait_for_lift(self, delay: float) -> int | None:
-        """Return the lift the shade reports within ``delay`` s, or else read it once."""
-        self._report = asyncio.get_running_loop().create_future()
+    async def _wait_for_lift(
+        self, delay: float, ends: Callable[[int], bool] | None = None
+    ) -> int | None:
+        """Return a reported lift ``ends`` accepts (any, if None) within ``delay`` s.
+
+        If none comes, read the lift once.
+        """
         with contextlib.suppress(TimeoutError):
             async with asyncio.timeout(delay):
-                return await self._report
+                while True:
+                    self._report = asyncio.get_running_loop().create_future()
+                    lift = await self._report
+                    if ends is None or ends(lift):
+                        return lift
+        if not self._registered():
+            return None
         try:
             success, _ = await self.read_attributes([LIFT.id], allow_cache=False)
         except ZigbeeException, TimeoutError:
