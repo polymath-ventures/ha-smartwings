@@ -20,22 +20,16 @@ from homeassistant.components.zha.helpers import (
     get_zha_gateway_proxy,
 )
 from homeassistant.core import HomeAssistant, callback
-from zha.quirks import DEVICE_REGISTRY, QUIRK_REGISTRY_ENTRY_ATTR, QuirkRegistryEntry
+from zha.quirks import DEVICE_REGISTRY, QuirkRegistryEntry
 import zhaquirks
-import zigpy.device
-
-from .const import QUIRK_ID
 
 __all__ = [
     "SIGNAL_ADD_ENTITIES",
     "QuirkRegistryEntry",
     "ZHAGatewayProxy",
     "async_gateway",
-    "is_registered",
     "load_quirk",
     "put_first",
-    "resolved_by_zha_quirks",
-    "zha_quirks_provide_quirk",
 ]
 
 
@@ -49,38 +43,11 @@ def async_gateway(hass: HomeAssistant) -> ZHAGatewayProxy | None:
         return None
 
 
-def zha_quirks_provide_quirk() -> bool:
-    """Return whether zha-quirks itself registers a quirk exposing the quirk ID.
-
-    Only entries from the ``zhaquirks`` package count: a custom quirk is not part of
-    Home Assistant, and this integration's quirk comes from ``custom_components``.
-    """
-    return any(
-        entry.source is not None
-        and entry.source.module.startswith("zhaquirks.")
-        and _declares_quirk_id(entry)
-        for entry in DEVICE_REGISTRY
-    )
-
-
-def resolved_by_zha_quirks(zigpy_device: zigpy.device.Device) -> bool:
-    """Return whether ZHA resolved ``zigpy_device`` with a quirk from zha-quirks itself.
-
-    ZHA's resolver records the registry entry it applied on the device it returns.
-    """
-    entry = getattr(zigpy_device, QUIRK_REGISTRY_ENTRY_ATTR, None)
-    return (
-        entry is not None
-        and entry.source is not None
-        and entry.source.module.startswith("zhaquirks.")
-    )
-
-
 def load_quirk() -> QuirkRegistryEntry:
     """Import the quirk after zha-quirks' own quirks; return its registry entry.
 
     Blocking: it imports every zha-quirks module. The entry is left first in ZHA's
-    registry, unless zha-quirks provides the quirk itself; then it is left out.
+    registry.
     """
     # Drain zha-quirks' v1 quirks now, so a later drain cannot put the vendor quirk in
     # front of this one. ZHA runs the same call when it sets up; it is idempotent.
@@ -88,15 +55,13 @@ def load_quirk() -> QuirkRegistryEntry:
     entry: QuirkRegistryEntry = importlib.import_module(
         f"{__package__}.quirk"
     ).QUIRK_ENTRY
-    remove(entry)
     # Registered without a source file, so ZHA's purge of custom_quirks_path never
     # removes it, even when that folder holds custom_components. ZHA reads only the
-    # source's module and label.
+    # source's module and label. It replaces the equal entry the import registered.
     pinned = dataclasses.replace(
         entry, source=dataclasses.replace(entry.source, file=None)
     )
-    if not zha_quirks_provide_quirk():
-        put_first(pinned)
+    put_first(pinned)
     return pinned
 
 
@@ -110,21 +75,3 @@ def remove(entry: QuirkRegistryEntry) -> None:
     """Take ``entry`` out of ZHA's quirk registry, if it is there."""
     with contextlib.suppress(ValueError):
         DEVICE_REGISTRY.remove(entry)
-
-
-def is_registered(entry: QuirkRegistryEntry) -> bool:
-    """Return whether ``entry`` itself is in ZHA's quirk registry."""
-    return any(registered is entry for registered in DEVICE_REGISTRY)
-
-
-def _declares_quirk_id(entry: QuirkRegistryEntry) -> bool:
-    """Return whether a registry entry's quirk definition exposes the quirk ID.
-
-    A quirks v2 entry carries its definition on its ZHA device factory
-    (``QuirkV2Factory.quirk_definition``); anything else has none and answers False.
-    """
-    definition = getattr(entry.zha_device_factory, "quirk_definition", None)
-    return any(
-        getattr(feature, "feature", None) == QUIRK_ID
-        for feature in getattr(definition, "exposes_features", ())
-    )

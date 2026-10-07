@@ -6,21 +6,14 @@ reloaded once.
 """
 
 from collections.abc import Callable
-import sys
 from unittest.mock import patch
 
-from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
-from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
 import pytest
 import zha.quirks
 import zhaquirks
 
-from custom_components.smartwings.const import DOMAIN
-from tests.quirk.conftest import QUIRK_FILE
 from tests.smartwings_helpers import (
     ENTRY_ID,
-    ISSUE_UPSTREAM,
     directory,
     domain_issues,
     install,
@@ -184,56 +177,6 @@ async def test_a_restart_with_the_shade_still_shadowed_reloads_once(
     assert issue(zha_harness_shadowed) is not None
 
 
-async def test_when_zha_quirks_provides_the_quirk_none_is_registered(
-    zha_harness: ZhaHarness,
-) -> None:
-    """zha-quirks has the quirk: the integration registers nothing, and says so."""
-    zha_harness.ship_upstream(QUIRK_FILE.read_text())
-    await zha_harness.restart()
-    assert quirk_loaded(zha_harness)
-
-    await install(zha_harness)
-
-    assert integration_entries() == []
-    assert zha_reloads(zha_harness) == 0
-    assert directory(zha_harness).shades[SHADE].quirk_active
-    assert domain_issues(zha_harness) == [ISSUE_UPSTREAM]
-    raised = issue(zha_harness, ISSUE_UPSTREAM)
-    assert raised is not None
-    assert raised.translation_key == ISSUE_UPSTREAM
-
-
-async def test_the_upstream_note_goes_with_the_integration(
-    zha_harness: ZhaHarness,
-) -> None:
-    """Removing the integration withdraws the note."""
-    zha_harness.ship_upstream(QUIRK_FILE.read_text())
-    await zha_harness.restart()
-    await install(zha_harness)
-    assert issue(zha_harness, ISSUE_UPSTREAM) is not None
-
-    await zha_harness.hass.config_entries.async_remove(ENTRY_ID)
-    await zha_harness.hass.async_block_till_done()
-
-    assert domain_issues(zha_harness) == []
-
-
-async def test_when_zha_quirks_has_the_quirk_but_it_loses_ours_is_used(
-    zha_harness: ZhaHarness,
-) -> None:
-    """zha-quirks has the quirk, but its vendor quirk wins: one reload, ours, no note."""
-    zha_harness.ship_upstream(QUIRK_FILE.read_text())
-    front_vendor_quirk()
-    await zha_harness.restart()
-    assert not quirk_loaded(zha_harness)
-
-    await install(zha_harness)
-
-    assert zha_reloads(zha_harness) == 1
-    assert quirk_loaded(zha_harness)
-    assert domain_issues(zha_harness) == []
-
-
 async def test_with_zha_quirks_turned_off_nothing_is_registered(
     zha_harness: ZhaHarness,
 ) -> None:
@@ -263,57 +206,3 @@ async def test_a_failed_registration_is_reported_not_raised(
     assert zha_reloads(zha_harness) == 0
     assert issue(zha_harness) is not None
     assert "Could not add the SmartWings quirk to ZHA" in caplog.text
-
-
-async def test_without_zhas_libraries_the_flow_asks_for_zha(
-    hass: HomeAssistant, enable_custom_integrations: None
-) -> None:
-    """ZHA never set up, so its libraries are missing: the flow still says what to do."""
-    with patch.dict(sys.modules):
-        for name in list(sys.modules):
-            if name.startswith(("homeassistant.components.zha", "custom_components.")):
-                del sys.modules[name]
-        # None in sys.modules makes an import fail as if the library were missing.
-        sys.modules.update(dict.fromkeys(("zha", "zhaquirks", "zigpy", "bellows")))
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
-
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "zha_not_configured"
-
-
-async def test_zhas_libraries_installed_later_are_used_on_retry(
-    zha_harness: ZhaHarness,
-) -> None:
-    """ZHA's libraries missing when the integration set up, present on a retry: loads."""
-    hass = zha_harness.hass
-    with patch.dict(sys.modules):
-        for name in list(sys.modules):
-            if name.startswith("custom_components."):
-                del sys.modules[name]
-        sys.modules.update(dict.fromkeys(("zha.quirks", "zhaquirks")))
-        await zha_harness.install(DOMAIN, ENTRY_ID)
-        entry = hass.config_entries.async_get_entry(ENTRY_ID)
-        assert entry.state is ConfigEntryState.SETUP_RETRY
-
-    assert await hass.config_entries.async_reload(ENTRY_ID)
-    await hass.async_block_till_done()
-
-    assert entry.state is ConfigEntryState.LOADED
-    assert quirk_loaded(zha_harness)
-    assert domain_issues(zha_harness) == []
-
-
-async def test_a_custom_copy_winning_over_zha_quirks_raises_no_upstream_note(
-    zha_harness: ZhaHarness,
-) -> None:
-    """zha-quirks has the quirk, but a custom quirk with the same ID serves the shade."""
-    zha_harness.ship_upstream(QUIRK_FILE.read_text())
-    (zha_harness.custom_quirks_path / "wm25lz.py").write_text(QUIRK_FILE.read_text())
-    await zha_harness.restart()
-
-    await install(zha_harness)
-
-    assert quirk_loaded(zha_harness)
-    assert domain_issues(zha_harness) == []

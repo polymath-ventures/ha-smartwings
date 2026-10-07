@@ -54,7 +54,6 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 | Message | What to do |
 | --- | --- |
 | SmartWings quirk not loaded | ZHA isn't using the SmartWings quirk for the shades listed. Another quirk for these shades may take precedence, such as a file in your ZHA custom quirks folder: remove it, then restart Home Assistant. If the message says ZHA's quirks are turned off, remove `enable_quirks: false` from the `zha:` section of `configuration.yaml`, then restart. |
-| The SmartWings quirk is now part of Home Assistant | Home Assistant's own ZHA quirks now include this quirk, so you no longer need this integration. Remove it (see [Uninstall](#uninstall)). |
 
 ## Troubleshooting
 

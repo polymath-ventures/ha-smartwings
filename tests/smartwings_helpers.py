@@ -18,7 +18,6 @@ from tests.zha_harness.radio import SHADE_NODE_DESCRIPTOR
 
 ENTRY_ID = "01K0SMARTWINGS000000000000"
 ISSUE_ID = "quirk_not_loaded"
-ISSUE_UPSTREAM = "quirk_now_upstream"
 # Another quirk for the WM25/L-Z, without the SmartWings quirk ID, as a custom quirk.
 SHADOW_FILE = "other_wm25lz.py"
 SHADOW_QUIRK = """from zhaquirks.builder import QuirkBuilder

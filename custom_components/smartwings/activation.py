@@ -4,28 +4,20 @@ ZHA picks each device's quirk when its gateway starts. The quirk is usually regi
 before ZHA starts, so ZHA finds it then. When ZHA was already running (the integration was
 just added) or picked another quirk first, ZHA's entry is reloaded, at most once per Home
 Assistant run, so it cannot loop.
-
-When zha-quirks itself provides the quirk, the integration's own is left out. The
-integration says it is no longer needed once ZHA uses zha-quirks' quirk for every shade;
-a shade that lacks the quirk gets the integration's after all, through the one reload.
 """
 
 import logging
-from typing import Final
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.util.hass_dict import HassKey
 
 from .const import DOMAIN
 from .shades import ShadeDirectory
-from .zha_gateway import QuirkRegistryEntry, put_first, zha_quirks_provide_quirk
+from .zha_gateway import QuirkRegistryEntry, put_first
 
 _LOGGER = logging.getLogger(__name__)
 
-# The issue's id and its translation key under "issues" in strings.json.
-ISSUE_UPSTREAM: Final = "quirk_now_upstream"
 # Set once ZHA has been reloaded in this Home Assistant run.
 ZHA_RELOADED: HassKey[bool] = HassKey(f"{DOMAIN}_zha_reloaded")
 
@@ -55,15 +47,14 @@ class QuirkActivation:
 
     @callback
     def async_setup(self) -> None:
-        """Put the quirk first, unless zha-quirks provides it."""
-        if self.quirk is not None and not zha_quirks_provide_quirk():
+        """Put the quirk first in ZHA's quirk registry."""
+        if self.quirk is not None:
             put_first(self.quirk)
 
     @callback
     def async_unload(self) -> None:
-        """Stop acting (the entry is unloading) and withdraw the issue it keeps."""
+        """Stop acting (the entry is unloading)."""
         self._unloaded = True
-        ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UPSTREAM)
 
     @callback
     def waiting(self) -> bool:
@@ -83,12 +74,11 @@ class QuirkActivation:
             or not self.shades.gateway_available
         ):
             return
-        shades = self.shades.shades.values()
-        missing = [shade.name for shade in shades if not shade.quirk_active]
-        self._async_note_upstream(
-            bool(shades)
-            and all(shade.quirk_active and shade.from_zha_quirks for shade in shades)
-        )
+        missing = [
+            shade.name
+            for shade in self.shades.shades.values()
+            if not shade.quirk_active
+        ]
         if not missing or self.hass.data.get(ZHA_RELOADED):
             return
         self.hass.data[ZHA_RELOADED] = True
@@ -100,21 +90,6 @@ class QuirkActivation:
         self._reloading = True
         self.entry.async_create_task(
             self.hass, self._async_reload_zha(), "smartwings reload zha"
-        )
-
-    @callback
-    def _async_note_upstream(self, upstream: bool) -> None:
-        """Say, or stop saying, that ZHA uses zha-quirks' quirk for every shade."""
-        if not upstream:
-            ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UPSTREAM)
-            return
-        ir.async_create_issue(
-            self.hass,
-            DOMAIN,
-            ISSUE_UPSTREAM,
-            is_fixable=False,
-            severity=ir.IssueSeverity.WARNING,
-            translation_key=ISSUE_UPSTREAM,
         )
 
     async def _async_reload_zha(self) -> None:

@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 import contextlib
-import importlib.util
 from pathlib import Path
 import sys
 from typing import Any
@@ -74,9 +73,6 @@ class ZhaHarness:
         self.custom_quirks_path_configured = True
         # ZHA's enable_quirks, likewise.
         self.quirks_enabled = True
-        # A folder outside custom_quirks_path, standing in for zha-quirks' package.
-        self.upstream_path = tmp_path / "upstream_zhaquirks"
-        self._upstream_modules: list[str] = []
         self.hass_storage = hass_storage
         self.motor = motor
         self.frames: list[Frame] = []
@@ -107,25 +103,6 @@ class ZhaHarness:
         if self.custom_quirks_path_configured:
             config[zha_const.CONF_CUSTOM_QUIRKS_PATH] = str(self.custom_quirks_path)
         return config
-
-    def ship_upstream(self, source: str) -> None:
-        """Register ``source`` as if the zha-quirks package Home Assistant pins shipped it.
-
-        It is loaded as a ``zhaquirks`` module from a folder outside custom_quirks_path,
-        so ZHA keeps it across restarts and reloads (it purges only custom quirks), until
-        the harness closes.
-        """
-        self.upstream_path.mkdir(exist_ok=True)
-        stem = f"upstream_wm25lz_{len(self._upstream_modules)}"
-        name = f"zhaquirks.{stem}"
-        path = self.upstream_path / f"{stem}.py"
-        path.write_text(source)
-        spec = importlib.util.spec_from_file_location(name, path)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module
-        self._upstream_modules.append(name)
-        spec.loader.exec_module(module)
 
     async def open(self, *, initial_lift: int) -> None:
         """Seed the database, take over the clock and the radio, and boot."""
@@ -171,8 +148,6 @@ class ZhaHarness:
             )
             for path in self.custom_quirks_path.glob("*.py"):
                 sys.modules.pop(path.stem, None)
-            for name in self._upstream_modules:
-                sys.modules.pop(name, None)
             self._patches.close()
         if self._exceptions:
             raise self._exceptions[0]
