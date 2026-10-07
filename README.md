@@ -47,7 +47,7 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 ## What to expect
 
 - **The position updates when the shade stops, not while it moves.** These motors only report their position at the end of a move.
-- **If a shade ignores a command, the quirk sends it again** once the shade should have arrived.
+- **If a shade ignores a command, the quirk sends it again.** Once the shade should have arrived, the quirk reads its position, and if the shade hasn't moved, it sends the command once more.
 - **Home Assistant usually shows moves made with the remote** once the shade stops. If it doesn't, refresh the shade:
 
   ```yaml
@@ -72,7 +72,7 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 - **A shade closes too far, or not far enough.** Reset its limits with the remote (see above).
 - **Open closes the shade and Close opens it.** Check Settings → Repairs: the quirk is probably not loaded. If it is, the shade's direction may have been reversed when it was installed.
 - **"Failed to open cover" or "Failed to close cover".** The shade didn't confirm the command, or another command to the same shade got in the way. The shade may be out of range. Try again.
-- **The shade didn't move and no error appeared.** The motor ignored both the command and the quirk's second try. Try again. If a shade stays stuck, a short move in the other direction (or a press on its remote) usually frees it.
+- **The shade didn't move and no error appeared.** The motor ignored the command, and the quirk's second try didn't move it either (or the quirk couldn't read the position to check). Try again. If a shade stays stuck, a short move in the other direction (or a press on its remote) usually frees it.
 
 ## Limitations
 
