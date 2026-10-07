@@ -33,7 +33,7 @@
     },
     "quirk_file_not_written": {
       "title": "SmartWings could not update its quirk file",
-      "description": "SmartWings could not write or read {file}: {error}\n\nZHA cannot load the SmartWings quirk until the file is there. Check that Home Assistant can write to that folder, then restart Home Assistant. You can also copy `quirk/zhaquirks/smartwings/wm25lz.py` from the SmartWings repository there by hand."
+      "description": "SmartWings could not write or read {file}: {error}\n\nZHA cannot load the SmartWings quirk until the file is there. Check that Home Assistant can write to that folder, then restart Home Assistant. You can also copy `quirk/zhaquirks/smartwings/wm25lz.py` from the SmartWings repository there by hand. The integration leaves a copy you made alone, so you must update it yourself."
     },
     "quirk_now_upstream": {
       "title": "The SmartWings quirk is now part of Home Assistant",

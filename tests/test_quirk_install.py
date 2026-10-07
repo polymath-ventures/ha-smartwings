@@ -34,8 +34,13 @@ from tests.zha_harness import SHADE_IEEE, ZhaHarness
 SHADE = str(SHADE_IEEE)
 # The quirk as a user copies it by hand: it works, unmarked.
 UNMARKED_QUIRK = QUIRK_FILE.read_bytes()
-# An older version of the integration's own file: marked, working, different bytes.
-OUTDATED_QUIRK = INSTALLED_QUIRK + b"# An older version.\n"
+# An install from an earlier release: its marker line as shipped, then other bytes.
+OUTDATED_QUIRK = (
+    b"# Installed by the SmartWings integration for Home Assistant, which keeps this"
+    b" file up to date. Delete this line to keep the file as your own.\n"
+    + UNMARKED_QUIRK
+    + b"# An older version.\n"
+)
 INTEGRATION_LOGGER = "custom_components.smartwings"
 STRINGS = json.loads(
     (

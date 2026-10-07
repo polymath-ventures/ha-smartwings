@@ -70,8 +70,8 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 ## Troubleshooting
 
 - **A shade closes too far, or not far enough.** Reset its limits with the remote (see above).
-- **Open closes the shade and Close opens it.** The quirk isn't loaded. Check Settings → Repairs.
-- **"Failed to open cover" or "Failed to close cover".** The shade didn't respond. It may be out of range. Try again.
+- **Open closes the shade and Close opens it.** Check Settings → Repairs: the quirk is probably not loaded. If it is, the shade's direction may have been reversed when it was installed.
+- **"Failed to open cover" or "Failed to close cover".** The shade didn't confirm the command, or a newer command replaced it. It may be out of range. Try again.
 - **The shade didn't move and no error appeared.** The motor ignored the command twice. Try again. If a shade stays stuck, a short move in the other direction (or a press on its remote) usually frees it.
 
 ## Limitations
