@@ -6,11 +6,13 @@ reloaded once.
 """
 
 from collections.abc import Callable
+import importlib
 from unittest.mock import patch
 
 import pytest
 import zha.quirks
 import zhaquirks
+from zhaquirks.legacy import PENDING_LEGACY_QUIRKS
 
 from tests.smartwings_helpers import (
     ENTRY_ID,
@@ -118,15 +120,26 @@ async def test_the_vendor_quirk_queued_at_import_is_drained_first(
 ) -> None:
     """A vendor quirk still waiting to be drained when the integration is imported.
 
-    The import drains it before registering the quirk, so ZHA needs no reload.
+    The integration drains it before registering the quirk, without loading the rest of
+    zha-quirks, so ZHA needs no reload.
     """
     await install(zha_harness)
-    setup, drained = draining_once(by_zha_only=False)
+    vendor = importlib.import_module("zhaquirks.smartwings.wm25lz").WM25LBlinds
+    for entry in list(zha.quirks.DEVICE_REGISTRY):
+        if entry.source is not None and entry.source.module == vendor.__module__:
+            zha.quirks.DEVICE_REGISTRY.remove(entry)
+    PENDING_LEGACY_QUIRKS.append(vendor)
+    calls: list[str | None] = []
+    setup = zhaquirks.setup
 
-    with patch.object(zhaquirks, "setup", setup):
+    def recording_setup(custom_quirks_path: str | None = None) -> None:
+        calls.append(custom_quirks_path)
+        setup(custom_quirks_path)
+
+    with patch.object(zhaquirks, "setup", recording_setup):
         await zha_harness.restart()
 
-    assert drained == ["None"]
+    assert None not in calls  # only ZHA's own call, with its custom_quirks_path
     assert zha_reloads(zha_harness) == 0
     assert quirk_loaded(zha_harness)
 
@@ -198,7 +211,9 @@ async def test_a_failed_registration_is_reported_not_raised(
     zha_harness: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     """ZHA's quirk registry refuses the quirk: the integration loads, and says so."""
-    with patch.object(zhaquirks, "setup", side_effect=RuntimeError("changed API")):
+    with patch.object(
+        zhaquirks, "_register_pending_quirks", side_effect=RuntimeError("changed API")
+    ):
         shades = await install(zha_harness)
 
     assert zha_harness.hass.config_entries.async_get_entry(ENTRY_ID) is not None
