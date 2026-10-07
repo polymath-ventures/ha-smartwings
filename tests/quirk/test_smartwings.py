@@ -500,41 +500,6 @@ async def test_a_raw_request_is_refused_too(shade, command, args, manufacturer) 
     assert shade.wire() == []
 
 
-async def test_a_removed_shade_is_left_alone(shade) -> None:
-    """Once zigpy removes the device, its follow-up neither reads nor re-sends."""
-    shade.motor.reports = False
-    shade.motor.ignore_next(1)
-    assert await go_to(shade, 80) == SUCCESS
-
-    await shade.app.remove(SHADE_IEEE)
-    await shade.clock.advance(SETTLED_S)
-
-    assert SHADE_IEEE not in shade.app.devices
-    assert shade.wire() == [GO_80]
-
-
-async def test_a_reversal_during_travel_waits_for_a_full_travel(shade) -> None:
-    """A movement that interrupts travel does not judge it from the stale cached lift.
-
-    A slow shade heading for 0 is turned back to 45 three seconds in. Judged from the
-    cached 40, the read would come 6.5 s later, while the radio still answers 40, and
-    the frame would be sent again to a moving shade.
-    """
-    shade.motor.reports = False
-    shade.motor.rate_pct_per_s = 1.0
-    assert await go_to(shade, 0) == SUCCESS
-    await shade.clock.advance(2)
-    assert await go_to(shade, 45) == SUCCESS
-
-    await shade.clock.advance(73 - JITTER_S)
-    assert READ not in shade.wire()
-    await shade.clock.advance(SETTLED_S)
-
-    go_to_45 = ("go_to_lift_percentage", 45)
-    assert shade.wire() == [("go_to_lift_percentage", 0), go_to_45, READ]
-    assert shade.covering.get(LIFT.id) == 45
-
-
 async def test_a_raw_stop_request_cancels_the_pending_re_send(shade) -> None:
     """A Stop sent through request() supersedes a movement like any other Stop."""
     shade.motor.reports = False
@@ -552,28 +517,6 @@ async def test_a_raw_stop_request_cancels_the_pending_re_send(shade) -> None:
     assert shade.wire() == [GO_80, STOP, READ]
 
 
-async def test_an_unread_end_is_no_origin_for_a_reversal(shade) -> None:
-    """A follow-up whose read failed leaves the pre-travel lift cached: not an origin.
-
-    A slow shade heading for 0 is read at the arrival estimate, unreadably, while it
-    still travels. Turned back to 45 then, judged from the cached 40, its read would
-    come 6.5 s later, while the radio still answers 40, and the frame would go again.
-    """
-    shade.motor.reports = False
-    shade.motor.rate_pct_per_s = 1.0
-    shade.motor.script_lift_reads(0xFF)
-    assert await go_to(shade, 0) == SUCCESS
-    await shade.clock.advance(ARRIVAL_40_S + 2 * shade.motor.reply_latency)
-    assert shade.wire() == [("go_to_lift_percentage", 0), READ]
-
-    assert await go_to(shade, 45) == SUCCESS
-    await shade.clock.advance(SETTLED_S)
-
-    go_to_45 = ("go_to_lift_percentage", 45)
-    assert shade.wire() == [("go_to_lift_percentage", 0), READ, go_to_45, READ]
-    assert shade.covering.get(LIFT.id) == 45
-
-
 @pytest.mark.parametrize("lift", [101, 255])
 async def test_a_go_to_outside_0_to_100_is_refused_unsent(shade, lift) -> None:
     """The radio forwards any byte; a lift outside 0-100 is refused as invalid."""
@@ -584,13 +527,3 @@ async def test_a_go_to_outside_0_to_100_is_refused_unsent(shade, lift) -> None:
 
     assert status(result) == foundation.Status.INVALID_VALUE
     assert shade.wire() == []
-
-
-async def test_a_stale_report_does_not_end_the_wait(shade) -> None:
-    """A report of the old position during travel is not its end: no re-send."""
-    assert await go_to(shade, 80) == SUCCESS
-    report(shade, INITIAL_LIFT)
-    await shade.clock.advance(SETTLED_S)
-
-    assert shade.wire() == [GO_80]
-    assert shade.covering.get(LIFT.id) == 80
