@@ -1,76 +1,53 @@
-"""SmartWings WM25/L-Z shades under ZHA: register the quirk, and say when it is not loaded.
+"""SmartWings WM25/L-Z shades under ZHA: add the quirk to ZHA, and say when it is not used.
 
-Importing the integration registers the quirk in ZHA's quirk registry. The manifest does
-not depend on ZHA, so Home Assistant imports the integration without waiting for ZHA,
-normally before ZHA builds its devices.
+ZHA's libraries (zha, zhaquirks, zigpy) are installed with ZHA itself, and the manifest
+does not depend on ZHA. So everything that needs them is in ``runtime``; without them
+the integration still loads, and its flow asks for ZHA first.
 """
 
-from homeassistant.components.zha import DOMAIN as ZHA_DOMAIN
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr, issue_registry as ir
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers import config_validation as cv, issue_registry as ir
+from homeassistant.helpers.typing import ConfigType
 
-from .activation import ISSUE_UPSTREAM, QuirkActivation
 from .const import DOMAIN
-from .repairs_missing import ISSUE_ID, MissingQuirkIssue
-from .shades import ShadeDirectory, is_removal_or_rename
-from .zha_gateway import SIGNAL_ADD_ENTITIES, register_quirk
 
-type SmartWingsConfigEntry = ConfigEntry[ShadeDirectory]
+try:
+    from . import runtime
+except ModuleNotFoundError as err:
+    if (err.name or "").startswith(__name__):
+        raise
+    runtime = None  # ZHA's libraries are missing: ZHA has never been set up here
 
-# The quirk's entries in ZHA's quirk registry; none if zha-quirks provides the quirk.
-QUIRK_ENTRIES = register_quirk()
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# The integration's Repairs issues, by id.
+ISSUES = ("quirk_not_loaded", "quirk_now_upstream")
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: SmartWingsConfigEntry) -> bool:
-    """Track the shades in ZHA, following ZHA's reloads and device changes."""
-    if not (
-        zha_entries := hass.config_entries.async_entries(
-            ZHA_DOMAIN, include_ignore=False
-        )
-    ):
-        raise ConfigEntryNotReady(
-            translation_domain=DOMAIN, translation_key="zha_not_ready"
-        )
-    zha_entry = zha_entries[0]
-    shades = entry.runtime_data = ShadeDirectory(hass)
-    activation = QuirkActivation(hass, entry, zha_entry, shades, QUIRK_ENTRIES)
-    missing_quirk = MissingQuirkIssue(hass, shades, activation.waiting)
-    entry.async_on_unload(shades.async_stop)
-    entry.async_on_unload(activation.async_unload)
-    entry.async_on_unload(missing_quirk.async_delete)
-    entry.async_on_unload(
-        async_dispatcher_connect(hass, SIGNAL_ADD_ENTITIES, shades.async_discover)
-    )
-
-    @callback
-    def async_zha_state_changed() -> None:
-        shades.async_zha_state_changed(zha_entry)
-
-    entry.async_on_unload(zha_entry.async_on_state_change(async_zha_state_changed))
-    entry.async_on_unload(
-        hass.bus.async_listen(
-            dr.EVENT_DEVICE_REGISTRY_UPDATED,
-            shades.async_device_registry_updated,
-            event_filter=is_removal_or_rename,
-        )
-    )
-    activation.async_setup()
-    # The reload decision first, so the issue waits for a reload it starts.
-    shades.add_listener(activation.async_check)
-    shades.add_listener(missing_quirk.async_update)
-    shades.async_zha_state_changed(zha_entry)
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the quirk as early as Home Assistant allows: before ZHA starts."""
+    if runtime is not None:
+        await runtime.async_register_quirk(hass, config)
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: SmartWingsConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Track the shades in ZHA, following ZHA's reloads and device changes."""
+    if runtime is None:
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN, translation_key="zha_not_ready"
+        )
+    return await runtime.async_setup_entry(hass, entry)
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload the entry; its listeners are removed by async_on_unload."""
     return True
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: SmartWingsConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Leave no Repairs issue behind."""
-    ir.async_delete_issue(hass, DOMAIN, ISSUE_ID)
-    ir.async_delete_issue(hass, DOMAIN, ISSUE_UPSTREAM)
+    for issue_id in ISSUES:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)

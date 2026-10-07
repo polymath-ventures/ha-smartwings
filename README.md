@@ -24,7 +24,7 @@ This project fixes all four. It is one small **integration** that adds a ZHA **q
 
 That's it. You don't edit `configuration.yaml` or copy any quirk file.
 
-When you add the integration, it reloads ZHA once so that ZHA applies the quirk to your shades. Your Zigbee devices are unavailable for a few seconds while ZHA reloads. After a restart, Home Assistant loads the integration before ZHA starts, so ZHA usually applies the quirk without a reload.
+When you add the integration, it reloads ZHA once so that ZHA applies the quirk to your shades. Your Zigbee devices are unavailable for a few seconds while ZHA reloads. When Home Assistant restarts, the order in which it starts integrations varies: usually the integration starts first and ZHA applies the quirk directly, but sometimes the integration reloads ZHA once, and your Zigbee devices are again unavailable for a few seconds.
 
 Settings → Repairs should show nothing from SmartWings. If it shows something, see [Repairs messages](#repairs-messages).
 
@@ -53,7 +53,7 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 
 | Message | What to do |
 | --- | --- |
-| SmartWings quirk not loaded | ZHA still used another quirk for the shades listed, even after the integration reloaded ZHA. Another quirk for these shades probably takes precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant. |
+| SmartWings quirk not loaded | ZHA isn't using the SmartWings quirk for the shades listed. Another quirk for these shades may take precedence, such as a file in your ZHA custom quirks folder: remove it, then restart Home Assistant. If the message says ZHA's quirks are turned off, remove `enable_quirks: false` from the `zha:` section of `configuration.yaml`, then restart. |
 | The SmartWings quirk is now part of Home Assistant | Home Assistant's own ZHA quirks now include this quirk, so you no longer need this integration. Remove it (see [Uninstall](#uninstall)). |
 
 ## Troubleshooting

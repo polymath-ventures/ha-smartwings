@@ -72,6 +72,8 @@ class ZhaHarness:
         # Whether ZHA's YAML sets custom_quirks_path; read at every start, as Home
         # Assistant reads configuration.yaml.
         self.custom_quirks_path_configured = True
+        # ZHA's enable_quirks, likewise.
+        self.quirks_enabled = True
         # A folder outside custom_quirks_path, standing in for zha-quirks' package.
         self.upstream_path = tmp_path / "upstream_zhaquirks"
         self._upstream_modules: list[str] = []
@@ -93,7 +95,7 @@ class ZhaHarness:
     def zha_config(self) -> dict[str, Any]:
         """YAML for ZHA: quirks on, our quirk path, background radio work off."""
         config: dict[str, Any] = {
-            zha_const.CONF_ENABLE_QUIRKS: True,
+            zha_const.CONF_ENABLE_QUIRKS: self.quirks_enabled,
             zha_const.CONF_ZIGPY: {
                 zigpy.config.CONF_WATCHDOG_ENABLED: False,
                 zigpy.config.CONF_NWK_BACKUP_ENABLED: False,
@@ -260,7 +262,10 @@ class ZhaHarness:
         MockConfigEntry(domain=domain, entry_id=entry_id, title=domain).add_to_hass(
             self.hass
         )
-        assert await async_setup_component(self.hass, domain, {})
+        # Home Assistant hands every integration the whole configuration.
+        assert await async_setup_component(
+            self.hass, domain, {zha_const.DOMAIN: self.zha_config}
+        )
         await self.hass.async_block_till_done()
 
     async def stop(self) -> None:

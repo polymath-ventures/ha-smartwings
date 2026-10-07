@@ -232,7 +232,7 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         return super()._legacy_apply_quirk_attribute_update(attr_def, value)
 
 
-(
+QUIRK_ENTRY = (
     QuirkBuilder("Smartwings", "WM25/L-Z")
     .replaces(DoublingPowerConfigurationCluster)
     .replaces(WM25LZWindowCovering)

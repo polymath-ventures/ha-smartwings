@@ -17,11 +17,15 @@
   "issues": {
     "quirk_not_loaded": {
       "title": "SmartWings quirk not loaded",
-      "description": "Zigbee Home Automation (ZHA) did not apply the SmartWings quirk to these shades, even after SmartWings reloaded ZHA:\n\n{shades}\n\nWithout it, ZHA uses another quirk, which swaps the Open and Close commands for these shades and lacks the SmartWings fixes.\n\nAnother quirk for these shades probably takes precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant."
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nAnother quirk for these shades may take precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant."
     },
     "quirk_now_upstream": {
       "title": "The SmartWings quirk is now part of Home Assistant",
-      "description": "The Zigbee Home Automation (ZHA) quirks that come with Home Assistant now include the SmartWings quirk, so SmartWings no longer adds its own. You can remove the SmartWings integration (Settings → Devices & services → SmartWings → ⋮ → Delete), then restart Home Assistant."
+      "description": "The Zigbee Home Automation (ZHA) quirks that come with Home Assistant now include the SmartWings quirk, and ZHA uses it for your shades, so SmartWings no longer adds its own. You can remove the SmartWings integration (Settings → Devices & services → SmartWings → ⋮ → Delete), then restart Home Assistant."
+    },
+    "quirk_not_loaded_quirks_off": {
+      "title": "SmartWings quirk not loaded",
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nZHA's quirks are turned off (`enable_quirks: false` in the `zha:` section of `configuration.yaml`), so SmartWings does not add its quirk. To use it, remove that line, then restart Home Assistant."
     }
   }
 }

@@ -6,7 +6,6 @@ that ZHA's purge of custom quirks leaves the integration's registration alone.
 
 from collections.abc import Iterator
 import contextlib
-import importlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -14,7 +13,11 @@ import sys
 import pytest
 import zha.quirks
 
-from custom_components.smartwings.zha_gateway import put_first, zha_quirks_provide_quirk
+from custom_components.smartwings.zha_gateway import (
+    is_registered,
+    load_quirk,
+    zha_quirks_provide_quirk,
+)
 from tests.quirk.conftest import QUIRK_FILE
 
 SOURCE = QUIRK_FILE.read_text()
@@ -96,13 +99,10 @@ def test_a_near_miss_is_not_the_quirk(tmp_path: Path, old: str, new: str) -> Non
 )
 def test_purging_a_folder_above_the_integration_keeps_the_quirk(folder: Path) -> None:
     """custom_quirks_path set to a folder holding the integration: the quirk stays."""
-    integration = importlib.import_module("custom_components.smartwings")
-    entries = integration.QUIRK_ENTRIES
-    assert entries
     with zha.quirks.DEVICE_REGISTRY.preserve_state():
-        put_first(entries)
+        entry = load_quirk()
+        assert is_registered(entry)
 
         zha.quirks.DEVICE_REGISTRY.purge_custom_quirks(folder)
 
-        remaining = [id(entry) for entry in zha.quirks.DEVICE_REGISTRY]
-        assert all(id(entry) in remaining for entry in entries)
+        assert is_registered(entry)

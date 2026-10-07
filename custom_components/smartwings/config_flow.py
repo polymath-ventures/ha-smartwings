@@ -2,10 +2,9 @@
 
 from typing import Any
 
-from homeassistant.components.zha import DOMAIN as ZHA_DOMAIN
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 
-from .const import DOMAIN
+from .const import DOMAIN, ZHA_DOMAIN
 
 
 class SmartWingsConfigFlow(ConfigFlow, domain=DOMAIN):

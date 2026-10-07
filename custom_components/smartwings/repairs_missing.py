@@ -1,7 +1,6 @@
 """The Repairs issue naming the shades for which ZHA did not load the quirk.
 
-Without it, ZHA uses the quirk that comes with Home Assistant, which swaps Open and Close
-for these shades. One issue lists every such shade; it changes only when that list does,
+One issue lists every such shade; it changes only when that list does,
 and is deleted when the list empties or the integration unloads. While ZHA is not loaded
 the list is unknown, so the issue is left as it is. While ZHA may still apply the quirk
 (it is starting, or the integration is reloading it), nothing is reported yet.
@@ -18,8 +17,10 @@ from .shades import ShadeDirectory
 
 _LOGGER = logging.getLogger(__name__)
 
-# The issue's id and its translation key under "issues" in strings.json.
+# The issue's id and its translation key under "issues" in strings.json; the second key
+# explains the issue when ZHA's quirks are turned off.
 ISSUE_ID = "quirk_not_loaded"
+QUIRKS_OFF_KEY = "quirk_not_loaded_quirks_off"
 
 
 class MissingQuirkIssue:
@@ -30,14 +31,18 @@ class MissingQuirkIssue:
         hass: HomeAssistant,
         shades: ShadeDirectory,
         waiting: Callable[[], bool],
+        *,
+        quirks_enabled: bool,
     ) -> None:
         """Follow ``shades``; the first update raises or deletes the issue.
 
-        ``waiting`` says whether ZHA may still apply the quirk, so nothing is reported.
+        ``waiting`` says whether ZHA may still apply the quirk, so nothing is reported;
+        ``quirks_enabled`` whether ZHA applies quirks at all.
         """
         self.hass = hass
         self.shades = shades
         self._waiting = waiting
+        self._translation_key = ISSUE_ID if quirks_enabled else QUIRKS_OFF_KEY
         # None until the first update, so that one also deletes an issue recorded
         # before a restart (Home Assistant keeps an inactive record of it).
         self._reported: tuple[tuple[str, str], ...] | None = None
@@ -62,9 +67,7 @@ class MissingQuirkIssue:
             ir.async_delete_issue(self.hass, DOMAIN, ISSUE_ID)
             return
         _LOGGER.warning(
-            "ZHA did not apply the SmartWings quirk to %s, even after a reload, so"
-            " their Open and Close commands go out swapped. Another quirk for these"
-            " shades probably takes precedence",
+            "ZHA is not using the SmartWings quirk for %s",
             ", ".join(f"{name} ({ieee})" for name, ieee in missing),
         )
         # ERROR: the shades misbehave now (Home Assistant's WARNING is for
@@ -75,7 +78,7 @@ class MissingQuirkIssue:
             ISSUE_ID,
             is_fixable=False,
             severity=ir.IssueSeverity.ERROR,
-            translation_key=ISSUE_ID,
+            translation_key=self._translation_key,
             translation_placeholders={
                 "shades": "\n".join(f"- {name} ({ieee})" for name, ieee in missing)
             },

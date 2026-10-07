@@ -20,16 +20,19 @@ from homeassistant.components.zha.helpers import (
     get_zha_gateway_proxy,
 )
 from homeassistant.core import HomeAssistant, callback
-import zha.quirks
+from zha.quirks import DEVICE_REGISTRY, QuirkRegistryEntry
 import zhaquirks
 
 from .const import QUIRK_ID
 
 __all__ = [
     "SIGNAL_ADD_ENTITIES",
+    "QuirkRegistryEntry",
     "ZHAGatewayProxy",
     "async_gateway",
-    "register_quirk",
+    "is_registered",
+    "load_quirk",
+    "put_first",
     "zha_quirks_provide_quirk",
 ]
 
@@ -54,53 +57,52 @@ def zha_quirks_provide_quirk() -> bool:
         entry.source is not None
         and entry.source.module.startswith("zhaquirks.")
         and _declares_quirk_id(entry)
-        for entry in zha.quirks.DEVICE_REGISTRY
+        for entry in DEVICE_REGISTRY
     )
 
 
-def register_quirk() -> tuple[zha.quirks.QuirkRegistryEntry, ...]:
-    """Import the quirk, registering it in front of zha-quirks' quirks; return its entries.
+def load_quirk() -> QuirkRegistryEntry:
+    """Import the quirk after zha-quirks' own quirks; return its registry entry.
 
-    Blocking (it imports every zha-quirks module): run it at import. Registers nothing
-    when zha-quirks provides the quirk itself.
+    Blocking: it imports every zha-quirks module. The entry is left first in ZHA's
+    registry, unless zha-quirks provides the quirk itself; then it is left out.
     """
     # Drain zha-quirks' v1 quirks now, so a later drain cannot put the vendor quirk in
     # front of this one. ZHA runs the same call when it sets up; it is idempotent.
     zhaquirks.setup()
-    if zha_quirks_provide_quirk():
-        return ()
-    before = {id(entry) for entry in zha.quirks.DEVICE_REGISTRY}
-    importlib.import_module(f"{__package__}.quirk")
-    added = [e for e in zha.quirks.DEVICE_REGISTRY if id(e) not in before]
-    # Re-registered without a source file, so ZHA's purge of custom_quirks_path never
-    # removes them, even when that folder holds custom_components. ZHA reads only the
+    entry: QuirkRegistryEntry = importlib.import_module(
+        f"{__package__}.quirk"
+    ).QUIRK_ENTRY
+    remove(entry)
+    # Registered without a source file, so ZHA's purge of custom_quirks_path never
+    # removes it, even when that folder holds custom_components. ZHA reads only the
     # source's module and label.
-    pinned = tuple(
-        dataclasses.replace(entry, source=dataclasses.replace(entry.source, file=None))
-        if entry.source is not None
-        else entry
-        for entry in added
+    pinned = dataclasses.replace(
+        entry, source=dataclasses.replace(entry.source, file=None)
     )
-    remove(tuple(added))
-    put_first(pinned)
+    if not zha_quirks_provide_quirk():
+        put_first(pinned)
     return pinned
 
 
-def put_first(entries: tuple[zha.quirks.QuirkRegistryEntry, ...]) -> None:
-    """Make ``entries`` the first ones ZHA's resolver tries, in the order given."""
-    remove(entries)
-    for entry in reversed(entries):
-        zha.quirks.DEVICE_REGISTRY.register(entry)
+def put_first(entry: QuirkRegistryEntry) -> None:
+    """Make ``entry`` the first one ZHA's resolver tries for its model."""
+    remove(entry)
+    DEVICE_REGISTRY.register(entry)
 
 
-def remove(entries: tuple[zha.quirks.QuirkRegistryEntry, ...]) -> None:
-    """Take ``entries`` out of ZHA's quirk registry, those that are there."""
-    for entry in entries:
-        with contextlib.suppress(ValueError):
-            zha.quirks.DEVICE_REGISTRY.remove(entry)
+def remove(entry: QuirkRegistryEntry) -> None:
+    """Take ``entry`` out of ZHA's quirk registry, if it is there."""
+    with contextlib.suppress(ValueError):
+        DEVICE_REGISTRY.remove(entry)
 
 
-def _declares_quirk_id(entry: zha.quirks.QuirkRegistryEntry) -> bool:
+def is_registered(entry: QuirkRegistryEntry) -> bool:
+    """Return whether ``entry`` itself is in ZHA's quirk registry."""
+    return any(registered is entry for registered in DEVICE_REGISTRY)
+
+
+def _declares_quirk_id(entry: QuirkRegistryEntry) -> bool:
     """Return whether a registry entry's quirk definition exposes the quirk ID.
 
     A quirks v2 entry carries its definition on its ZHA device factory
