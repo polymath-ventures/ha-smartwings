@@ -14,7 +14,7 @@ from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 
 from .const import QUIRK_ID, SHADE_MANUFACTURER, SHADE_MODEL
-from .zha_gateway import async_gateway
+from .zha_gateway import async_gateway, resolved_by_zha_quirks
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +25,8 @@ class Shade:
     device_id: str  # ZHA's device in the device registry
     name: str
     quirk_active: bool
+    # Whether ZHA resolved the shade with a quirk from zha-quirks itself.
+    from_zha_quirks: bool
 
 
 class ShadeDirectory:
@@ -134,6 +136,7 @@ def async_find_shades(hass: HomeAssistant) -> dict[str, Shade] | None:
             device_id=proxy.device_id,
             name=_display_name(device_registry.async_get(proxy.device_id), str(ieee)),
             quirk_active=QUIRK_ID in proxy.device.exposes_features,
+            from_zha_quirks=resolved_by_zha_quirks(zigpy_device),
         )
     return found
 

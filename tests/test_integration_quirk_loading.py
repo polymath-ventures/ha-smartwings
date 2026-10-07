@@ -9,7 +9,7 @@ from collections.abc import Callable
 import sys
 from unittest.mock import patch
 
-from homeassistant.config_entries import SOURCE_USER
+from homeassistant.config_entries import SOURCE_USER, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 import pytest
@@ -281,3 +281,39 @@ async def test_without_zhas_libraries_the_flow_asks_for_zha(
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "zha_not_configured"
+
+
+async def test_zhas_libraries_installed_later_are_used_on_retry(
+    zha_harness: ZhaHarness,
+) -> None:
+    """ZHA's libraries missing when the integration set up, present on a retry: loads."""
+    hass = zha_harness.hass
+    with patch.dict(sys.modules):
+        for name in list(sys.modules):
+            if name.startswith("custom_components."):
+                del sys.modules[name]
+        sys.modules.update(dict.fromkeys(("zha.quirks", "zhaquirks")))
+        await zha_harness.install(DOMAIN, ENTRY_ID)
+        entry = hass.config_entries.async_get_entry(ENTRY_ID)
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+
+    assert await hass.config_entries.async_reload(ENTRY_ID)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert quirk_loaded(zha_harness)
+    assert domain_issues(zha_harness) == []
+
+
+async def test_a_custom_copy_winning_over_zha_quirks_raises_no_upstream_note(
+    zha_harness: ZhaHarness,
+) -> None:
+    """zha-quirks has the quirk, but a custom quirk with the same ID serves the shade."""
+    zha_harness.ship_upstream(QUIRK_FILE.read_text())
+    (zha_harness.custom_quirks_path / "wm25lz.py").write_text(QUIRK_FILE.read_text())
+    await zha_harness.restart()
+
+    await install(zha_harness)
+
+    assert quirk_loaded(zha_harness)
+    assert domain_issues(zha_harness) == []

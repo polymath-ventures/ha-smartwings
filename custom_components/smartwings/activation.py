@@ -5,9 +5,9 @@ before ZHA starts, so ZHA finds it then. When ZHA was already running (the integ
 just added) or picked another quirk first, ZHA's entry is reloaded, at most once per Home
 Assistant run, so it cannot loop.
 
-When zha-quirks itself provides the quirk, the integration's own is left out, and the
-integration says it is no longer needed once every shade has the quirk without it. A
-shade that lacks it gets the integration's quirk after all, through the one reload.
+When zha-quirks itself provides the quirk, the integration's own is left out. The
+integration says it is no longer needed once ZHA uses zha-quirks' quirk for every shade;
+a shade that lacks the quirk gets the integration's after all, through the one reload.
 """
 
 import logging
@@ -20,12 +20,7 @@ from homeassistant.util.hass_dict import HassKey
 
 from .const import DOMAIN
 from .shades import ShadeDirectory
-from .zha_gateway import (
-    QuirkRegistryEntry,
-    is_registered,
-    put_first,
-    zha_quirks_provide_quirk,
-)
+from .zha_gateway import QuirkRegistryEntry, put_first, zha_quirks_provide_quirk
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,17 +50,13 @@ class QuirkActivation:
         self.zha_entry = zha_entry
         self.shades = shades
         self.quirk = quirk
-        self.upstream = False
         self._reloading = False
         self._unloaded = False
 
     @callback
     def async_setup(self) -> None:
         """Put the quirk first, unless zha-quirks provides it."""
-        if self.quirk is None:
-            return
-        self.upstream = zha_quirks_provide_quirk()
-        if not self.upstream:
+        if self.quirk is not None and not zha_quirks_provide_quirk():
             put_first(self.quirk)
 
     @callback
@@ -92,13 +83,11 @@ class QuirkActivation:
             or not self.shades.gateway_available
         ):
             return
-        missing = [
-            shade.name
-            for shade in self.shades.shades.values()
-            if not shade.quirk_active
-        ]
+        shades = self.shades.shades.values()
+        missing = [shade.name for shade in shades if not shade.quirk_active]
         self._async_note_upstream(
-            self.upstream and not missing and not is_registered(self.quirk)
+            bool(shades)
+            and all(shade.quirk_active and shade.from_zha_quirks for shade in shades)
         )
         if not missing or self.hass.data.get(ZHA_RELOADED):
             return
@@ -115,7 +104,7 @@ class QuirkActivation:
 
     @callback
     def _async_note_upstream(self, upstream: bool) -> None:
-        """Say, or stop saying, that zha-quirks' quirk serves every shade."""
+        """Say, or stop saying, that ZHA uses zha-quirks' quirk for every shade."""
         if not upstream:
             ir.async_delete_issue(self.hass, DOMAIN, ISSUE_UPSTREAM)
             return

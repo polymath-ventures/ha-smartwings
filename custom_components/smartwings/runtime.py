@@ -40,6 +40,12 @@ class QuirkRegistration:
 REGISTRATION: HassKey[QuirkRegistration] = HassKey(f"{DOMAIN}_registration")
 
 
+@callback
+def registered(hass: HomeAssistant) -> bool:
+    """Return whether ``async_register_quirk`` has run in this Home Assistant run."""
+    return REGISTRATION in hass.data
+
+
 async def async_register_quirk(hass: HomeAssistant, config: ConfigType) -> None:
     """Register the quirk in ZHA's quirk registry, unless ZHA's quirks are turned off.
 

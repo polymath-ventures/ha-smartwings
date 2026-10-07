@@ -20,8 +20,9 @@ from homeassistant.components.zha.helpers import (
     get_zha_gateway_proxy,
 )
 from homeassistant.core import HomeAssistant, callback
-from zha.quirks import DEVICE_REGISTRY, QuirkRegistryEntry
+from zha.quirks import DEVICE_REGISTRY, QUIRK_REGISTRY_ENTRY_ATTR, QuirkRegistryEntry
 import zhaquirks
+import zigpy.device
 
 from .const import QUIRK_ID
 
@@ -33,6 +34,7 @@ __all__ = [
     "is_registered",
     "load_quirk",
     "put_first",
+    "resolved_by_zha_quirks",
     "zha_quirks_provide_quirk",
 ]
 
@@ -58,6 +60,19 @@ def zha_quirks_provide_quirk() -> bool:
         and entry.source.module.startswith("zhaquirks.")
         and _declares_quirk_id(entry)
         for entry in DEVICE_REGISTRY
+    )
+
+
+def resolved_by_zha_quirks(zigpy_device: zigpy.device.Device) -> bool:
+    """Return whether ZHA resolved ``zigpy_device`` with a quirk from zha-quirks itself.
+
+    ZHA's resolver records the registry entry it applied on the device it returns.
+    """
+    entry = getattr(zigpy_device, QUIRK_REGISTRY_ENTRY_ATTR, None)
+    return (
+        entry is not None
+        and entry.source is not None
+        and entry.source.module.startswith("zhaquirks.")
     )
 
 
