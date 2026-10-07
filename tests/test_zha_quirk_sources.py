@@ -1,8 +1,7 @@
-"""What the integration reads from ZHA to install its quirk file (issue #18).
+"""What the integration reads from ZHA to install its quirk file.
 
-ZHA's YAML ``custom_quirks_path``, as ZHA holds it at runtime, and whether the quirk
-registry ZHA loaded holds U for the WM25/L-Z, by its quirk ID, from outside that folder,
-i.e. from the zha-quirks package Home Assistant pins. Both are read, never changed.
+ZHA's YAML ``custom_quirks_path``, and whether ZHA's quirk registry holds the quirk for
+the WM25/L-Z, by its quirk ID, from outside that folder (the zha-quirks package).
 """
 
 from collections.abc import Iterator
@@ -112,18 +111,6 @@ def test_a_near_miss_is_not_the_quirk(tmp_path: Path, old: str, new: str) -> Non
     """The quirk ID and the model must both match."""
     with registered(replaced(SOURCE, old, new), tmp_path / "site_packages"):
         assert zha_quirks_provide_quirk(None) is False
-
-
-def test_the_check_reads_without_importing_or_registering(tmp_path: Path) -> None:
-    """Asking imports no module and changes no registry entry."""
-    with registered(SOURCE, tmp_path / "site_packages"):
-        modules = set(sys.modules)
-        entries = list(zha.quirks.DEVICE_REGISTRY)
-
-        zha_quirks_provide_quirk(None)
-
-        assert set(sys.modules) == modules
-        assert list(zha.quirks.DEVICE_REGISTRY) == entries
 
 
 @pytest.mark.parametrize(

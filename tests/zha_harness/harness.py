@@ -325,9 +325,7 @@ async def open_zha_harness(
     harness = ZhaHarness(
         tmp_path,
         hass_storage,
-        # ZCL's meaning of the raw run-to-limit commands; the real units are unmeasured
-        # (Part 1 §3c). Tests that depend on the direction must set it themselves.
-        MotorSim(position=initial_lift, rate_pct_per_s=5.0, commands_reversed=False),
+        MotorSim(position=initial_lift, rate_pct_per_s=5.0),
     )
     harness.custom_quirks_path_configured = custom_quirks_path_configured
     try:

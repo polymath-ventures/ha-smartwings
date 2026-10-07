@@ -1,13 +1,10 @@
-"""The Repairs issue naming the shades for which ZHA did not load the quirk (Part 3 §2m).
+"""The Repairs issue naming the shades for which ZHA did not load the quirk.
 
-Without the quirk, ZHA uses the released one, which swaps the Open and Close commands
-for these shades and sends each command once, and nothing else tells the user. One issue lists every such shade; it changes only when that
-list does, and is deleted when the list empties or the integration unloads. While ZHA is
-not loaded the list is unknown, so the issue is left as it is.
-
-While the integration has just installed or updated the quirk file and asks for a restart
-(#18), nothing is wrong: the restart request is shown instead, and nothing is logged at
-WARNING. This issue is for a quirk the integration could not get loaded.
+Without it, ZHA uses the quirk that comes with Home Assistant, which swaps Open and Close
+for these shades. One issue lists every such shade; it changes only when that list does,
+and is deleted when the list empties or the integration unloads. While ZHA is not loaded
+the list is unknown, so the issue is left as it is. While a restart request is pending,
+that is shown instead and nothing is logged at WARNING.
 """
 
 from collections.abc import Callable

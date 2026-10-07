@@ -1,10 +1,8 @@
-"""The shades ZHA knows about, and whether the quirk (U) is active for each.
+"""The shades ZHA knows about, and whether the quirk is active for each.
 
-A shade is a ZHA device whose zigpy device identifies as the SmartWings WM25/L-Z. U is
-active when the ZHA device lists U's quirk ID in its ``exposes_features``, which ZHA
-fills from the quirk it applied; no class, module or cluster is consulted. It is read on
-the device ZHA holds at each discovery. No ZHA or zigpy object is kept between
-discoveries: a ZHA reload replaces them.
+A shade is a ZHA device whose zigpy device identifies as the SmartWings WM25/L-Z. The
+quirk is active when the ZHA device lists its quirk ID in ``exposes_features``. No ZHA or
+zigpy object is kept between discoveries: a ZHA reload replaces them.
 """
 
 from collections.abc import Callable

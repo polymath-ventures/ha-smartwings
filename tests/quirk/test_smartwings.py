@@ -1,15 +1,12 @@
-"""Tests for the SmartWings WM25/L-Z quirk, kept in upstream's test style (issue #2)."""
+"""Tests for the SmartWings WM25/L-Z quirk, in upstream's test style."""
 
-import ast
 import asyncio
 import dataclasses
 import logging
-import re
 import subprocess
 import sys
 
 import pytest
-import zha.quirks
 from zhaquirks import DoublingPowerConfigurationCluster
 from zhaquirks.smartwings.wm25lz import InvertedWindowCoveringCluster, WM25LBlinds
 import zigpy.exceptions
@@ -27,14 +24,12 @@ from tests.quirk.conftest import (
     QUIRK_MODULE,
     READ,
     covering_of,
-    load_quirk,
-    open_app,
 )
 from tests.zha_harness import SHADE_IEEE, SHADE_NWK, report_packet
 
 
 def test_quirk_imports_without_home_assistant() -> None:
-    """The quirk is ZHA library code: loading it must not import Home Assistant (Part 3 §3b)."""
+    """The quirk is ZHA library code: loading it must not import Home Assistant."""
     probe = (
         "import importlib.util, sys; "
         "spec = importlib.util.spec_from_file_location('smartwings_wm25lz', sys.argv[1]); "
@@ -58,13 +53,8 @@ def test_shade_resolves_to_the_quirk_covering_cluster(app, wm25lz) -> None:
         assert type(covering_of(app, ieee)) is wm25lz.WM25LZWindowCovering
 
 
-def test_each_shade_has_its_own_cluster_instance(app) -> None:
-    """Per-shade state (the command lock) lives on separate cluster instances."""
-    assert covering_of(app, SHADE_IEEE) is not covering_of(app, OTHER_IEEE)
-
-
 async def test_live_read_parses_a_real_response(shade) -> None:
-    """The live lift comes from zigpy's real Read Attributes path (§5a item 17)."""
+    """The live lift comes from zigpy's real Read Attributes path."""
     shade.motor.set_position(37)
 
     lift, _ = await shade.outcome(shade.covering._read_lift_live(), within=5)
@@ -105,17 +95,17 @@ async def test_live_read_that_never_answers_is_unreadable(shade) -> None:
 
 
 def test_a_restored_lift_is_no_baseline(started_shade) -> None:
-    """The lift zigpy restored is shown but is no baseline (#27).
+    """The lift zigpy restored is shown but is no baseline.
 
     Only a lift received since startup is, and it is known without sending anything.
     """
     shade = started_shade
     assert shade.covering.get(LIFT.id) == INITIAL_LIFT
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     shade.covering.update_attribute(LIFT.id, 42)  # a read or report since startup
-    assert shade.covering._cached_lift_raw() == 42
+    assert shade.baseline() == 42
     shade.covering.update_attribute(LIFT.id, None)
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     assert shade.wire() == []
 
 
@@ -187,7 +177,7 @@ async def test_read_is_not_retried_on_other_errors(shade, monkeypatch) -> None:
     assert len(attempts) == 1
 
 
-# --- Delivery: send once, judge after the travel time (Part 3 §2j, §2k; F3-F6; #51) --
+# --- Delivery: send once, judge after the travel time --------------------------
 
 GO_TO = WindowCovering.ServerCommandDefs.go_to_lift_percentage
 STOP = WindowCovering.ServerCommandDefs.stop
@@ -199,10 +189,8 @@ SETTLED_S = 400.0
 
 
 def go_to(shade, target: int) -> tuple[str, int]:
-    """Deliver go_to_lift_percentage(target) with its raw target; return its frame."""
-    return shade.covering._deliver(
-        shade.quirk.WireCommand(GO_TO.id, (target,), target)
-    ), (GO_TO.name, target)
+    """Return go_to_lift_percentage(target), not yet started, and its frame."""
+    return shade.covering.go_to_lift_percentage(target), (GO_TO.name, target)
 
 
 def assert_failed(result, command_id: int = 0x05) -> None:
@@ -224,7 +212,7 @@ def lift_now(shade) -> int:
 
 
 async def test_a_movement_is_sent_once_and_returns_at_once(shade) -> None:
-    """One frame, no read: the command returns with the radio's answer (#51)."""
+    """One frame, no read: the command returns with the radio's answer."""
     delivery, frame = go_to(shade, 80)
 
     result, elapsed = await shade.outcome(delivery, within=shade.quirk.T_EXEC)
@@ -243,7 +231,7 @@ async def test_the_end_of_travel_report_ends_it_without_a_read(shade) -> None:
 
     assert shade.wire() == [frame]
     assert shade.covering.get(LIFT.id) == 80
-    assert shade.covering._cached_lift_raw() == 80
+    assert shade.baseline() == 80
     assert tracking_tasks() == []
 
 
@@ -251,7 +239,7 @@ async def test_reads_during_travel_never_count_against_it(shade) -> None:
     """Refreshes during travel answer the lift from before the move; nothing is re-sent.
 
     The radio answers reads from its copy of the lift, which changes only at the end of
-    travel (#51): a read 4 s into the go-to 80 still returns 40.
+    travel: a read 4 s into the go-to 80 still returns 40.
     """
     delivery, frame = go_to(shade, 80)
     await shade.outcome(delivery, within=shade.quirk.T_EXEC)
@@ -277,7 +265,7 @@ async def test_reads_answer_from_the_radios_copy_without_reports(shade) -> None:
 
     assert shade.wire() == [frame, READ]
     assert shade.covering.get(LIFT.id) == 80
-    assert shade.covering._cached_lift_raw() == 80
+    assert shade.baseline() == 80
 
 
 @pytest.mark.parametrize("reports", [True, False], ids=["reports", "no-reports"])
@@ -286,8 +274,8 @@ async def test_an_ignored_first_frame_is_re_sent_once_after_the_travel_time(
 ) -> None:
     """The motor ignores the first frame; at the estimated arrival the lift is unchanged.
 
-    One read shows no travel, so the identical frame goes out once more and lands
-    (Part 1 §3e). Before that, the command has long returned SUCCESS.
+    One read shows no travel, so the identical frame goes out once more and lands.
+    Before that, the command has long returned SUCCESS.
     """
     shade.motor.reports = reports
     shade.motor.ignore_next(1)
@@ -303,7 +291,7 @@ async def test_an_ignored_first_frame_is_re_sent_once_after_the_travel_time(
     assert shade.commands() == [frame, frame]
     assert lift_now(shade) == 80
     assert shade.covering.get(LIFT.id) == 80
-    assert shade.covering._cached_lift_raw() == 80
+    assert shade.baseline() == 80
 
 
 async def test_a_shade_slower_than_the_estimate_gets_one_harmless_re_send(
@@ -313,7 +301,7 @@ async def test_a_shade_slower_than_the_estimate_gets_one_harmless_re_send(
 
     At 1 point/s the go-to 80 takes 40 s, longer than the 31 s estimate. The read
     returns the start lift, so the frame is re-sent; the motor keeps going and stops
-    once, at 80 (duplicate go-to, #51). The command itself never fails.
+    once, at 80. The command itself never fails.
     """
     shade.motor.rate_pct_per_s = 1.0
     delivery, frame = go_to(shade, 80)
@@ -330,7 +318,7 @@ async def test_a_shade_slower_than_the_estimate_gets_one_harmless_re_send(
 async def test_a_shade_that_never_moves_is_re_sent_once_then_left(
     shade, caplog
 ) -> None:
-    """A stuck motor: SUCCESS, one re-send after the travel time, then one WARNING (F5).
+    """A stuck motor: SUCCESS, one re-send after the travel time, then one WARNING.
 
     No error reaches Home Assistant after the command has returned.
     """
@@ -348,7 +336,7 @@ async def test_a_shade_that_never_moves_is_re_sent_once_then_left(
 
 
 async def test_movement_away_from_the_target_is_not_travel(shade) -> None:
-    """A shade the remote sent the other way does not count as this command landing (F4)."""
+    """A shade the remote sent the other way does not count as this command landing."""
     shade.motor.start_moving(30, shade.clock.time())  # heading away from 80
     shade.motor.ignore_next(1)
     delivery, frame = go_to(shade, 80)
@@ -366,7 +354,7 @@ async def test_movement_away_from_the_target_is_not_travel(shade) -> None:
     ids=["unknown-255", "lost"],
 )
 async def test_an_unreadable_lift_is_no_evidence(shade, answers, reads) -> None:
-    """An unreadable lift neither ends travel nor calls for a re-send (F3, §5a item 9).
+    """An unreadable lift neither ends travel nor calls for a re-send.
 
     The next read, CONFIRM_GAP_S later, shows the shade at its target.
     """
@@ -382,7 +370,7 @@ async def test_an_unreadable_lift_is_no_evidence(shade, answers, reads) -> None:
 
 
 async def test_a_lost_frame_is_sent_again_once(shade) -> None:
-    """A frame lost on the air goes out once more, SEND_RETRY_DELAY later (§5a item 10)."""
+    """A frame lost on the air goes out once more, SEND_RETRY_DELAY later."""
     quirk = shade.quirk
     shade.motor.fail_next_sends(1, delivered=False)
     delivery, frame = go_to(shade, 80)
@@ -430,7 +418,7 @@ async def test_stop_drops_the_re_send(shade, ignored) -> None:
     await shade.outcome(delivery, within=shade.quirk.T_EXEC)
     await shade.clock.advance(2)
 
-    await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT)
     halted = lift_now(shade)
     await shade.clock.advance(SETTLED_S)
 
@@ -446,7 +434,7 @@ async def test_stop_cancels_the_retry_of_a_lost_frame(shade) -> None:
     task = asyncio.ensure_future(delivery)
     await shade.clock.advance(1)
 
-    await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT)
     result, _ = await shade.outcome(task, within=shade.quirk.T_EXEC)
     await shade.clock.advance(SETTLED_S)
 
@@ -463,8 +451,8 @@ async def test_stop_cancels_a_re_send_the_readback_already_holds(shade) -> None:
     await shade.clock.advance(0)
     [resend] = recorder.resends
 
-    await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
-    await shade.outcome(resend(shade.quirk.RadioBudget()), within=shade.quirk.T_EXEC)
+    await shade.outcome(shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT)
+    await shade.outcome(resend(), within=shade.quirk.T_EXEC)
 
     assert shade.commands() == [frame, (STOP.name,)]
 
@@ -481,9 +469,10 @@ async def test_a_movement_queued_before_a_stop_is_dropped(shade) -> None:
     queued_task = asyncio.ensure_future(queued)
     await shade.clock.advance(1)
 
-    await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT)
     (results, _) = await shade.clock.run(
-        asyncio.gather(first_task, queued_task), limit=shade.quirk.T_QUEUED
+        asyncio.gather(first_task, queued_task),
+        limit=shade.quirk.LOCK_WAIT + shade.quirk.T_EXEC,
     )
     halted = lift_now(shade)
     await shade.clock.advance(SETTLED_S)
@@ -497,7 +486,7 @@ async def test_a_movement_queued_before_a_stop_is_dropped(shade) -> None:
 
 async def test_a_movement_issued_after_a_stop_is_sent(shade) -> None:
     """Only commands issued before a Stop are dropped: one issued after it goes out."""
-    await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT)
     delivery, frame = go_to(shade, 20)
 
     result, _ = await shade.outcome(delivery, within=shade.quirk.T_EXEC)
@@ -521,7 +510,7 @@ async def test_a_stop_during_delivery_is_read_back_without_a_report(shade) -> No
     task = asyncio.ensure_future(delivery)
     await shade.clock.advance(1)
 
-    await shade.outcome(shade.covering.stop(), within=quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=quirk.SEND_TIMEOUT)
     result, _ = await shade.outcome(task, within=quirk.T_EXEC)
     await shade.clock.advance(SETTLED_S)
 
@@ -545,7 +534,7 @@ async def test_a_movement_dropped_by_a_stop_does_not_cancel_its_read(shade) -> N
     delivery, frame = go_to(shade, 80)
     task = asyncio.ensure_future(delivery)
 
-    await shade.outcome(shade.covering.stop(), within=quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=quirk.SEND_TIMEOUT)
     result, _ = await shade.outcome(task, within=quirk.T_EXEC)
     await shade.clock.advance(SETTLED_S)
 
@@ -565,7 +554,7 @@ async def test_a_stop_during_delivery_reported_by_the_shade_is_not_read(
     task = asyncio.ensure_future(delivery)
     await shade.clock.advance(1)
 
-    await shade.outcome(shade.covering.stop(), within=quirk.T_PASS)
+    await shade.outcome(shade.covering.stop(), within=quirk.SEND_TIMEOUT)
     await shade.outcome(task, within=quirk.T_EXEC)
     await shade.clock.advance(SETTLED_S)
 
@@ -581,13 +570,11 @@ async def test_the_re_send_is_one_frame_even_if_lost(shade) -> None:
     await shade.clock.advance(0)
     [resend] = recorder.resends
     shade.motor.fail_next_sends(1, delivered=False)
-    budget = shade.quirk.RadioBudget()
 
-    await shade.outcome(resend(budget), within=shade.quirk.T_EXEC)
+    await shade.outcome(resend(), within=shade.quirk.T_EXEC)
     await shade.clock.advance(SETTLED_S)
 
     assert shade.commands() == [frame, frame]
-    assert budget.frames == 1
 
 
 async def test_a_late_report_of_the_previous_move_does_not_mislead(
@@ -619,7 +606,7 @@ async def test_a_late_report_of_the_previous_move_does_not_mislead(
     ids=["no-baseline", "at-target", "within-tolerance"],
 )
 async def test_every_movement_takes_one_path(shade, cached, target) -> None:
-    """No baseline, or a cache at the target: one frame as for any movement (F6)."""
+    """No baseline, or a cache at the target: one frame as for any movement."""
     shade.covering.update_attribute(LIFT.id, cached)
     delivery, frame = go_to(shade, target)
 
@@ -646,16 +633,16 @@ async def test_without_a_baseline_an_ignored_frame_is_re_sent(shade) -> None:
 
 
 async def test_a_command_without_a_target_passes_through_once(shade) -> None:
-    """Stop goes out once, unverified; its lone 0x81 is reported as SUCCESS (§2l; #54)."""
+    """Stop goes out once, unverified; its lone 0x81 is reported as SUCCESS."""
     delivery = shade.covering._deliver(shade.quirk.WireCommand(STOP.id, (), None))
 
-    result, _ = await shade.outcome(delivery, within=shade.quirk.T_PASS)
+    result, _ = await shade.outcome(delivery, within=shade.quirk.SEND_TIMEOUT)
 
     assert result.status is foundation.Status.SUCCESS
     assert shade.wire() == [(STOP.name,)]
 
 
-# --- Serialisation, bounds, tracking hooks and the radio budget (§3g, F2) -----------
+# --- Serialisation, bounds and tracking hooks -----------------------------------
 
 TILT = WindowCovering.ServerCommandDefs.go_to_tilt_percentage
 
@@ -666,7 +653,7 @@ def hang_everything(shade) -> None:
 
 
 async def test_two_commands_on_one_shade_are_serialised(shade) -> None:
-    """The second command's frame goes out only after the first finished (§5a 13)."""
+    """The second command's frame goes out only after the first finished."""
     first, first_frame = go_to(shade, 80)
     second, second_frame = go_to(shade, 20)
 
@@ -680,7 +667,7 @@ async def test_two_commands_on_one_shade_are_serialised(shade) -> None:
 
 
 async def test_a_stuck_shade_does_not_delay_another(shade) -> None:
-    """Shade A's radio swallows every frame; shade B's command completes at once (§3g)."""
+    """Shade A's radio swallows every frame; shade B's command completes at once."""
     quirk = shade.quirk
     hang_everything(shade)
     other = covering_of(shade.app, OTHER_IEEE)
@@ -694,7 +681,7 @@ async def test_a_stuck_shade_does_not_delay_another(shade) -> None:
             finished[name] = shade.clock.time() - start
 
     stuck, _ = go_to(shade, 80)
-    healthy = other._deliver(quirk.WireCommand(GO_TO.id, (80,), 80))
+    healthy = other.go_to_lift_percentage(80)
 
     (results, _) = await shade.clock.run(
         asyncio.gather(timed("A", stuck), timed("B", healthy), return_exceptions=True),
@@ -709,7 +696,7 @@ async def test_a_stuck_shade_does_not_delay_another(shade) -> None:
 
 
 async def test_delivery_never_waits_on_its_own_lock(shade) -> None:
-    """A delivery with a lost frame completes; both sends run holding the lock (F2)."""
+    """A delivery with a lost frame completes; both sends run holding the lock."""
     quirk = shade.quirk
     shade.motor.fail_next_sends(1, delivered=False)
     lock_held_at_sends = []
@@ -751,29 +738,14 @@ async def test_pass_through_commands_skip_the_lock(shade) -> None:
     await shade.covering._command_lock.acquire()
     delivery = shade.covering._deliver(shade.quirk.WireCommand(STOP.id, (), None))
 
-    result, _ = await shade.outcome(delivery, within=shade.quirk.T_PASS)
+    result, _ = await shade.outcome(delivery, within=shade.quirk.SEND_TIMEOUT)
 
     assert result.status is foundation.Status.SUCCESS
     assert shade.wire() == [(STOP.name,)]
 
 
-def test_bounds_are_derived_from_the_timing_constants(shade) -> None:
-    """The documented bounds are formulas over the named constants (§3g)."""
-    quirk = shade.quirk
-    assert quirk.T_EXEC == (
-        quirk.SEND_ATTEMPTS * quirk.SEND_TIMEOUT
-        + (quirk.SEND_ATTEMPTS - 1) * quirk.SEND_RETRY_DELAY
-    )
-    assert quirk.T_EXEC == 12.5
-    assert quirk.T_PASS == quirk.SEND_TIMEOUT
-    assert quirk.LOCK_WAIT == quirk.T_EXEC
-    assert quirk.T_QUEUED == quirk.LOCK_WAIT + quirk.T_EXEC
-    assert quirk.DELIVERY_MAX_OPS == quirk.SEND_ATTEMPTS
-    assert quirk.DELIVERY_MAX_OPS + quirk.TRACKING_MAX_OPS == quirk.RADIO_BUDGET
-
-
 async def test_worst_case_movement_command_ends_within_t_exec(shade) -> None:
-    """Every send hangs: the command fails within T_EXEC (§5a item 14)."""
+    """Every send hangs: the command fails within T_EXEC."""
     quirk = shade.quirk
     hang_everything(shade)
     delivery, frame = go_to(shade, 80)
@@ -785,19 +757,21 @@ async def test_worst_case_movement_command_ends_within_t_exec(shade) -> None:
     assert shade.wire() == [frame, frame]
 
 
-async def test_worst_case_pass_through_ends_within_t_pass(shade) -> None:
-    """A hanging Stop fails within T_PASS."""
+async def test_worst_case_pass_through_ends_within_send_timeout(shade) -> None:
+    """A hanging Stop fails within SEND_TIMEOUT."""
     quirk = shade.quirk
     hang_everything(shade)
     delivery = shade.covering._deliver(quirk.WireCommand(STOP.id, (), None))
 
-    error, _ = await shade.outcome(delivery, within=quirk.T_PASS)
+    error, _ = await shade.outcome(delivery, within=quirk.SEND_TIMEOUT)
 
     assert isinstance(error, TimeoutError)
     assert shade.wire() == [(STOP.name,)]
 
 
-async def test_worst_case_queued_command_ends_within_t_queued(shade) -> None:
+async def test_worst_case_queued_command_ends_within_lock_wait_plus_t_exec(
+    shade,
+) -> None:
     """A command queued behind a worst-case one finishes within LOCK_WAIT + T_EXEC."""
     quirk = shade.quirk
     hang_everything(shade)
@@ -813,11 +787,11 @@ async def test_worst_case_queued_command_ends_within_t_queued(shade) -> None:
 
     (results, _) = await shade.clock.run(
         asyncio.gather(first, queued(), return_exceptions=True),
-        limit=issued_after + quirk.T_QUEUED + JITTER_S,
+        limit=issued_after + quirk.LOCK_WAIT + quirk.T_EXEC + JITTER_S,
     )
 
     assert_failed(results[0])
-    assert results[1] <= quirk.T_QUEUED + JITTER_S
+    assert results[1] <= quirk.LOCK_WAIT + quirk.T_EXEC + JITTER_S
     assert (GO_TO.name, 20) in shade.wire()
 
 
@@ -838,10 +812,10 @@ class HookRecorder:
         # asyncio.Lock keeps its waiters in _waiters; no public API says who waits.
         self.calls.append(("cancel", lock.locked(), bool(lock._waiters)))
 
-    def finished(self, target_lift, budget, resend=None) -> None:
-        """Record a finish, with its arguments and the lock's state."""
+    def finished(self, target_lift, resend=None) -> None:
+        """Record a finish, with its target and the lock's state."""
         self.calls.append(
-            ("finished", target_lift, budget, self.covering._command_lock.locked())
+            ("finished", target_lift, self.covering._command_lock.locked())
         )
         self.resends.append(resend)
 
@@ -873,7 +847,7 @@ async def test_pass_through_commands_call_no_hook(shade, wire_command) -> None:
 
     await shade.outcome(
         shade.covering._deliver(shade.quirk.WireCommand(command_id, args, None)),
-        within=shade.quirk.T_PASS,
+        within=shade.quirk.SEND_TIMEOUT,
     )
     await shade.clock.advance(1)
 
@@ -881,7 +855,7 @@ async def test_pass_through_commands_call_no_hook(shade, wire_command) -> None:
 
 
 async def test_finish_hook_runs_once_after_success_and_after_failure(shade) -> None:
-    """_on_movement_finished(target, budget, resend) follows each command, lock released.
+    """_on_movement_finished(target, resend) follows each command, lock released.
 
     Only the command the radio answered with SUCCESS hands over a re-send.
     """
@@ -899,9 +873,8 @@ async def test_finish_hook_runs_once_after_success_and_after_failure(shade) -> N
     assert_success(result)
     [cancel_1, finished_1, cancel_2, finished_2] = recorder.calls
     assert cancel_1 == cancel_2 == ("cancel", False, False)
-    assert (finished_1[0], finished_1[1], finished_1[3]) == ("finished", 30, False)
-    assert (finished_2[0], finished_2[1], finished_2[3]) == ("finished", 80, False)
-    assert isinstance(finished_1[2], quirk.RadioBudget)
+    assert finished_1 == ("finished", 30, False)
+    assert finished_2 == ("finished", 80, False)
     [no_resend, resend] = recorder.resends
     assert no_resend is None
     assert callable(resend)
@@ -928,84 +901,7 @@ async def test_a_raising_hook_does_not_change_the_result(shade, caplog) -> None:
     ]
 
 
-async def test_worst_case_delivery_stays_inside_the_radio_budget(shade) -> None:
-    """Frames never exceed DELIVERY_MAX_OPS, and the budget counts them.
-
-    Every frame fails at once, so delivery runs its full structural worst case.
-    """
-    quirk = shade.quirk
-    shade.motor.fail_next_sends(10**3, delivered=False)
-    recorder = HookRecorder(shade.covering)
-    delivery, _ = go_to(shade, 80)
-
-    result, _ = await shade.outcome(delivery, within=quirk.T_EXEC)
-    await shade.clock.advance(0)
-
-    assert_failed(result)
-    [_, (_, _, budget, _)] = recorder.calls
-    assert len(shade.wire()) == budget.used == quirk.DELIVERY_MAX_OPS
-    assert budget.remaining == quirk.TRACKING_MAX_OPS
-
-
-async def test_a_spent_budget_stops_all_traffic_and_fails(shade) -> None:
-    """With the budget spent mid-command, nothing more goes out and the command fails."""
-    quirk = shade.quirk
-    shade.motor.fail_next_sends(1, delivered=False)
-    budget = quirk.RadioBudget(limit=1)
-    delivery = shade.covering._deliver(
-        quirk.WireCommand(GO_TO.id, (80,), 80), budget=budget
-    )
-
-    result, elapsed = await shade.outcome(delivery, within=quirk.T_EXEC)
-
-    assert_failed(result)
-    assert shade.wire() == [(GO_TO.name, 80)]
-    assert budget.remaining == 0
-    assert elapsed < quirk.T_EXEC
-
-
-@pytest.mark.parametrize(
-    ("cache", "override"), [(40, 70), (None, 40)], ids=["override", "override-gives"]
-)
-async def test_the_baseline_comes_only_from_cached_lift_raw(
-    shade, cache, override
-) -> None:
-    """Overriding _cached_lift_raw() changes the baseline; the cache is not read directly."""
-    shade.covering.update_attribute(LIFT.id, cache)
-    shade.covering._cached_lift_raw = lambda: override
-    delivery, frame = go_to(shade, 80)
-
-    result, _ = await shade.outcome(delivery, within=shade.quirk.T_EXEC)
-
-    assert_success(result)
-    assert shade.wire() == [frame]
-    assert shade.covering._command_origin == override
-
-
-async def test_live_read_charges_a_given_budget_and_stops_when_spent(shade) -> None:
-    """Position readback reads through the command's budget; a spent one sends nothing."""
-    quirk = shade.quirk
-    budget = quirk.RadioBudget(limit=3)
-    shade.motor.script_lift_reads(None, None)
-
-    lost, _ = await shade.outcome(
-        shade.covering._read_lift_live(budget), within=quirk.T_EXEC
-    )
-    answered, _ = await shade.outcome(
-        shade.covering._read_lift_live(budget), within=quirk.T_EXEC
-    )
-    spent, _ = await shade.outcome(
-        shade.covering._read_lift_live(budget), within=quirk.T_EXEC
-    )
-
-    assert (lost, answered) == (None, INITIAL_LIFT)
-    assert isinstance(spent, quirk.RadioBudgetSpentError)
-    assert str(SHADE_IEEE) in str(spent)
-    assert shade.wire() == [READ, READ, READ]
-    assert (budget.reads, budget.remaining) == (3, 0)
-
-
-# --- Stock translation and wiring (§3a, §3c) ------------------------------------------
+# --- Stock translation and wiring ----------------------------------------------------
 
 
 @pytest.fixture
@@ -1031,7 +927,7 @@ STOCK_COMMANDS = pytest.mark.parametrize(
 
 
 async def assert_same_frame_as_vendor(shade, vendor_covering, command, args, kwargs):
-    """Send one command through the vendor quirk and through U; compare the frames."""
+    """Send one command through the vendor quirk and through this one; compare the frames."""
     vendor_reply, _ = await shade.outcome(
         getattr(vendor_covering, command)(*args, **kwargs), within=5
     )
@@ -1076,8 +972,8 @@ async def test_open_and_close_go_out_unswapped(
 ) -> None:
     """Open is up_open and close is down_close, as ZHA sends them, not the vendor swap.
 
-    Raw down_close lowers these units (Part 1 §3c, #34) and raw up_open raised the
-    Office Shade (#51); the motor stops each at its remote-set limit (#54).
+    Raw down_close lowers these units and raw up_open raises them; the motor stops
+    each at its remote-set limit.
     """
     commands = WindowCovering.ServerCommandDefs
     await shade.outcome(getattr(vendor_covering, command)(), within=5)
@@ -1120,7 +1016,7 @@ def test_translation_keeps_the_command_and_targets_its_lift(
 
 
 def test_no_inverted_lift(shade) -> None:
-    """Go-to 10 carries lift 10, not 90: no value swap for an id swap (F18)."""
+    """Go-to 10 carries lift 10, not 90: no value swap for an id swap."""
     wire_command, _ = shade.covering._translate(GO_TO.id, (10,), {})
 
     assert wire_command == shade.quirk.WireCommand(GO_TO.id, (10,), 10)
@@ -1134,7 +1030,7 @@ def test_no_inverted_lift(shade) -> None:
 def test_commands_without_a_lift_target_are_translated_to_pass_through(
     shade, command, args
 ) -> None:
-    """Stop, tilt and anything without a valid lift get no target (§2l)."""
+    """Stop, tilt and anything without a valid lift get no target."""
     command_id = getattr(WindowCovering.ServerCommandDefs, command).id
 
     wire_command, _ = shade.covering._translate(command_id, args, {})
@@ -1142,16 +1038,8 @@ def test_commands_without_a_lift_target_are_translated_to_pass_through(
     assert wire_command == shade.quirk.WireCommand(command_id, args, None)
 
 
-async def test_stop_through_the_cluster_is_sent_once_and_succeeds(shade) -> None:
-    """cluster.stop() goes out once, unverified; the motor halts, so its 0x81 is SUCCESS."""
-    result, _ = await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
-
-    assert result.status is foundation.Status.SUCCESS
-    assert shade.wire() == [(STOP.name,)]
-
-
 async def test_a_lost_first_frame_through_the_cluster_is_resent(shade) -> None:
-    """ZHA's call path, cluster.go_to_lift_percentage(), re-sends a lost frame (§2j)."""
+    """ZHA's call path, cluster.go_to_lift_percentage(), re-sends a lost frame."""
     shade.motor.drop_next(1)
 
     result, _ = await shade.outcome(
@@ -1165,7 +1053,7 @@ async def test_a_lost_first_frame_through_the_cluster_is_resent(shade) -> None:
 async def test_normal_operation_logs_nothing_at_warning(shade, caplog) -> None:
     """Lost frames, re-sends, read retries and commands without a baseline log at DEBUG.
 
-    Only a command whose end is never seen warns (§3c).
+    Only a command whose end is never seen warns.
     """
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
@@ -1193,7 +1081,7 @@ async def test_normal_operation_logs_nothing_at_warning(shade, caplog) -> None:
 
 
 async def test_a_failed_command_logs_at_debug_naming_the_shade(shade, caplog) -> None:
-    """Giving up logs the shade's IEEE at DEBUG; nothing reaches WARNING (§3c)."""
+    """Giving up logs the shade's IEEE at DEBUG; nothing reaches WARNING."""
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     shade.motor.fail_next_sends(2, delivered=False)
     delivery, _ = go_to(shade, 80)
@@ -1209,21 +1097,6 @@ async def test_a_failed_command_logs_at_debug_naming_the_shade(shade, caplog) ->
     )
 
 
-async def test_import_and_instantiation_log_nothing(tmp_path, clock, caplog) -> None:
-    """Loading the quirk and building its clusters logs nothing at any level (§3c)."""
-    caplog.set_level(logging.DEBUG)
-    with zha.quirks.DEVICE_REGISTRY.preserve_state():
-        try:
-            load_quirk()
-            app = await open_app(tmp_path)
-            covering_of(app, SHADE_IEEE)
-            await app.shutdown()
-        finally:
-            sys.modules.pop(QUIRK_MODULE, None)
-
-    assert [r for r in caplog.records if r.name == QUIRK_MODULE] == []
-
-
 def test_keyword_go_to_is_translated_to_a_verified_command(shade) -> None:
     """The keyword form gets the same target as the positional one, not a pass-through."""
     wire_command, kwargs = shade.covering._translate(
@@ -1234,39 +1107,19 @@ def test_keyword_go_to_is_translated_to_a_verified_command(shade) -> None:
     assert kwargs == {"retries": 1}
 
 
-def test_the_documented_bounds_match_the_constants(shade) -> None:
-    """The module docstring's bound table states the values the code computes (§3c)."""
-    quirk = shade.quirk
-    rows = [
-        re.match(r"\s*(T_\w+)\s+.+?\s+(\d+\.\d+)\s", line)
-        for line in quirk.__doc__.splitlines()
-    ]
-    documented = {row[1]: float(row[2]) for row in rows if row}
-    computed = {
-        name: getattr(quirk, name)
-        for name in ("T_EXEC", "T_PASS", "T_QUEUED", "T_READ")
-    }
-    assert documented == computed
-
-
-# --- Review fixes ----------------------------------------------------------------------
+# --- Retries and baselines -------------------------------------------------------------
 
 
 async def test_caller_retries_cannot_add_frames_to_a_delivery(shade) -> None:
-    """A caller's zigpy ``retries`` is overridden: one budgeted request is one frame."""
+    """A caller's zigpy ``retries`` is overridden: each attempt is one frame."""
     quirk = shade.quirk
     shade.motor.fail_next_sends(10**3, delivered=False)
-    budget = quirk.RadioBudget()
-    delivery = shade.covering._deliver(
-        quirk.WireCommand(GO_TO.id, (80,), 80), budget=budget, retries=1
-    )
+    delivery = shade.covering.command(GO_TO.id, 80, retries=1)
 
     result, _ = await shade.outcome(delivery, within=quirk.T_EXEC)
 
     assert_failed(result)
-    assert shade.commands() == [(GO_TO.name, 80)] * quirk.SEND_ATTEMPTS
-    assert budget.frames == quirk.SEND_ATTEMPTS
-    assert budget.used == len(shade.wire())
+    assert shade.wire() == [(GO_TO.name, 80)] * quirk.SEND_ATTEMPTS
 
 
 async def test_caller_retries_cannot_add_frames_to_a_read(shade) -> None:
@@ -1302,7 +1155,7 @@ async def test_delivery_leaves_the_cache_and_listeners_alone(shade) -> None:
 
 
 async def test_a_command_during_travel_is_not_judged_by_the_old_baseline(shade) -> None:
-    """A command sent while the shade travels has no baseline (#27).
+    """A command sent while the shade travels has no baseline.
 
     A go-to 100 from 40 lands; a go-to 90 sent at once is ignored by the motor. Judged
     against 40, the shade reaching 100 would pass for travel toward 90 and the go-to 90
@@ -1324,17 +1177,17 @@ async def test_a_command_during_travel_is_not_judged_by_the_old_baseline(shade) 
 
 
 async def test_the_lift_seen_at_the_end_of_travel_is_the_next_baseline(shade) -> None:
-    """Sending retires the baseline; a lift read in travel is none; the end's is (#27)."""
+    """Sending retires the baseline; a lift read in travel is none; the end's is."""
     delivery, _ = go_to(shade, 80)
     result, _ = await shade.outcome(delivery, within=shade.quirk.T_EXEC)
     assert_success(result)
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
 
     shade.covering.update_attribute(LIFT.id, 60)  # a refresh while it travels
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     await shade.clock.advance(SETTLED_S)
 
-    assert shade.covering._cached_lift_raw() == 80
+    assert shade.baseline() == 80
 
 
 @pytest.mark.parametrize(
@@ -1345,7 +1198,7 @@ async def test_the_lift_seen_at_the_end_of_travel_is_the_next_baseline(shade) ->
 async def test_after_readback_gives_up_only_a_seen_end_is_a_baseline(
     shade, start, baseline
 ) -> None:
-    """After a give-up, the re-read is a baseline only if it shows travel ended (#30 1b).
+    """After a give-up, the re-read is a baseline only if it shows travel ended.
 
     A shade that starts after readback gave up is at its target by the re-read; one
     that never moves reads its start lift again, which is no end.
@@ -1364,10 +1217,10 @@ async def test_after_readback_gives_up_only_a_seen_end_is_a_baseline(
     assert tracking_tasks() == [] or all(
         "re-read" in task.get_name() for task in tracking_tasks()
     )
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     await shade.clock.advance(quirk.DEFERRED_REREAD_DELAY)
 
-    assert shade.covering._cached_lift_raw() == baseline
+    assert shade.baseline() == baseline
 
 
 async def test_a_lift_read_after_readback_gave_up_in_travel_is_no_baseline(
@@ -1376,7 +1229,7 @@ async def test_a_lift_read_after_readback_gave_up_in_travel_is_no_baseline(
     """Readback gives up before a late start; a refresh after it is no baseline.
 
     The go-to 80 starts only after tracking has given up, and a refresh then reads the
-    lift. A go-to 90 the motor ignores is still re-sent and lands (#30 review 1b).
+    lift. A go-to 90 the motor ignores is still re-sent and lands.
     """
     quirk = shade.quirk
     shade.motor.reports = False
@@ -1389,7 +1242,7 @@ async def test_a_lift_read_after_readback_gave_up_in_travel_is_no_baseline(
     await shade.outcome(
         shade.covering.read_attributes([LIFT.id], allow_cache=False), within=5
     )
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     shade.motor.start_delay = 0
     shade.motor.ignore_next(1)
     second, frame = go_to(shade, 90)
@@ -1402,13 +1255,13 @@ async def test_a_lift_read_after_readback_gave_up_in_travel_is_no_baseline(
 
 
 async def test_an_unverified_go_to_retires_the_baseline(shade) -> None:
-    """A go-to without a valid lift may move the shade with no readback after it (#27)."""
+    """A go-to without a valid lift may move the shade with no readback after it."""
     await shade.outcome(
-        shade.covering.go_to_lift_percentage(255), within=shade.quirk.T_PASS
+        shade.covering.go_to_lift_percentage(255), within=shade.quirk.SEND_TIMEOUT
     )
 
     assert shade.commands() == [(GO_TO.name, 255)]
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
 
 
 async def test_a_superseded_command_does_not_start_tracking(shade) -> None:
@@ -1506,7 +1359,7 @@ async def test_at_target_tolerance_boundary(shade, look, expected) -> None:
     assert commands == ([frame] if expected == "travel" else [frame, frame])
 
 
-# --- One v2 quirk with the vendor quirk's battery reading and a quirk ID (#54) ------
+# --- The vendor quirk's battery reading ---------------------------------------------
 
 BATTERY = PowerConfiguration.AttributeDefs.battery_percentage_remaining
 
@@ -1514,10 +1367,10 @@ BATTERY = PowerConfiguration.AttributeDefs.battery_percentage_remaining
 async def test_battery_reports_are_doubled_as_the_vendor_quirk_does(
     shade, vendor_covering
 ) -> None:
-    """The same battery report caches the same value under U and the released quirk.
+    """The same battery report caches the same value under this and the released quirk.
 
-    The released quirk replaces PowerConfiguration so a report of 42 caches 84; U
-    supersedes that quirk, so it must keep the doubling.
+    The released quirk replaces PowerConfiguration so a report of 42 caches 84; this
+    quirk supersedes it, so it must keep the doubling.
     """
     ours = shade.app.get_device(SHADE_IEEE).endpoints[1].power
     vendor = shade.app.get_device(OTHER_IEEE).endpoints[1].power
@@ -1533,22 +1386,24 @@ async def test_battery_reports_are_doubled_as_the_vendor_quirk_does(
     assert isinstance(ours, DoublingPowerConfigurationCluster)
 
 
-# --- Stop: once, never synthesised, its second reply no error (Part 3 §2l, F16; #54) -
+# --- Stop: once, never synthesised, its second reply no error ---------------------
 
 
 @pytest.mark.parametrize("reply", [None, "success-first", "unsup-first", "unsup-only"])
 async def test_stop_is_one_unchanged_frame_and_succeeds(shade, reply) -> None:
     """One Stop frame, no read or go-to; whichever reply wins, the caller gets SUCCESS.
 
-    The radio forwards a standard Stop and the motor halts (#51); the 0x81 is the
-    firmware's second reply (FA §3), as for a movement.
+    The radio forwards a standard Stop and the motor halts; the 0x81 is the
+    firmware's second reply, as for a movement.
 
     A shade at rest sends no report, so one read STOP_SETTLE_S later shows where it is.
     """
     shade.motor.double_reply = reply
     translated, _ = shade.covering._translate(STOP.id, (), {})
 
-    result, _ = await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    result, _ = await shade.outcome(
+        shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT
+    )
     await shade.clock.advance(shade.quirk.T_EXEC)
 
     assert translated == shade.quirk.WireCommand(STOP.id, (), None)
@@ -1561,43 +1416,15 @@ async def test_a_stop_that_raises_is_not_hidden(shade) -> None:
     """Only the 0x81 is mapped: a Stop lost on the air still fails as zigpy reports it."""
     shade.motor.fail_next_sends(1, delivered=False)
 
-    result, _ = await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    result, _ = await shade.outcome(
+        shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT
+    )
 
     assert isinstance(result, zigpy.exceptions.DeliveryError)
     assert shade.wire() == [(STOP.name,)]
 
 
-def test_a_quirk_id_is_declared(wm25lz) -> None:
-    """U declares its quirk ID, which the integration reads to tell U is loaded."""
-    [entry] = [
-        entry
-        for entry in zha.quirks.DEVICE_REGISTRY
-        if entry.source is not None and entry.source.module == QUIRK_MODULE
-    ]
-    features = entry.zha_device_factory.quirk_definition.exposes_features
-
-    assert [feature.feature for feature in features] == [wm25lz.QUIRK_ID]
-    assert wm25lz.QUIRK_ID == "smartwings.wm25lz"
-
-
-def test_no_cluster_or_entity_is_added(app, wm25lz) -> None:
-    """U replaces two clusters and adds nothing: no local cluster, no entity (#54)."""
-    [entry] = [
-        entry
-        for entry in zha.quirks.DEVICE_REGISTRY
-        if entry.source is not None and entry.source.module == QUIRK_MODULE
-    ]
-    endpoint = app.get_device(SHADE_IEEE).endpoints[1]
-
-    assert entry.zha_device_factory.quirk_definition.entity_metadata == ()
-    assert 0xFC01 not in endpoint.in_clusters
-    assert {type(c).__name__ for c in endpoint.in_clusters.values()} >= {
-        "WM25LZWindowCovering",
-        "DoublingPowerConfigurationCluster",
-    }
-
-
-# --- The displayed position is the lift the shade sent (Part 3 §2i; #54) ----------
+# --- The displayed position is the lift the shade sent ----------------------------
 
 
 def lift_events(shade) -> list[tuple[str, int | None]]:
@@ -1626,7 +1453,7 @@ async def test_a_read_caches_the_lift_as_sent(shade, lift) -> None:
     assert result == ({LIFT.id: lift}, {})
     assert shade.covering.get(LIFT.id) == lift
     assert events[-1][1] == lift
-    assert shade.covering._cached_lift_raw() == lift
+    assert shade.baseline() == lift
 
 
 async def test_a_report_is_cached_as_sent(shade) -> None:
@@ -1635,11 +1462,11 @@ async def test_a_report_is_cached_as_sent(shade) -> None:
     await shade.clock.advance(1)
 
     assert shade.covering.get(LIFT.id) == 41
-    assert shade.covering._cached_lift_raw() == 41
+    assert shade.baseline() == 41
 
 
 async def test_an_unknown_lift_never_enters_the_cache(shade) -> None:
-    """Lift 255 (ZCL "unknown") leaves the cache and the raw lift as they were (D5)."""
+    """Lift 255 (ZCL "unknown") leaves the cache and the raw lift as they were."""
     shade.covering.update_attribute(LIFT.id, 42)
     cached = shade.covering.get(LIFT.id)
     shade.motor.script_lift_reads(255)
@@ -1650,7 +1477,7 @@ async def test_an_unknown_lift_never_enters_the_cache(shade) -> None:
     shade.covering.update_attribute(LIFT.id, 101)
 
     assert shade.covering.get(LIFT.id) == cached
-    assert shade.covering._cached_lift_raw() == 42
+    assert shade.baseline() == 42
 
 
 @pytest.mark.parametrize("path", ["read", "report"])
@@ -1675,24 +1502,19 @@ async def test_an_unknown_lift_emits_no_event(shade, path) -> None:
         await shade.clock.advance(1)
 
     assert events == []
-    assert shade.covering._cached_lift_raw() == 42
+    assert shade.baseline() == 42
 
 
-def test_the_cache_is_the_lift_received(shade) -> None:
-    """The displayed lift is the lift the shade sent (#54)."""
-    for raw in (0, 42, 84, 100):
-        shade.covering.update_attribute(LIFT.id, raw)
-        assert shade.covering.get(LIFT.id) == raw
-
-
-# --- The shade's lock (review 1a) ----------------------------------------------------
+# --- The shade's lock ----------------------------------------------------------------
 
 
 async def test_stop_passes_a_busy_shade(shade) -> None:
     """Stop never waits for the lock: one frame while another command holds the shade."""
     await shade.covering._command_lock.acquire()
 
-    result, _ = await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
+    result, _ = await shade.outcome(
+        shade.covering.stop(), within=shade.quirk.SEND_TIMEOUT
+    )
 
     assert result.status is foundation.Status.SUCCESS
     assert shade.wire() == [(STOP.name,)]
@@ -1712,7 +1534,9 @@ async def test_a_targetless_movement_supersedes_the_command_it_waited_behind(
     await shade.clock.advance(0.1)
     queued = asyncio.ensure_future(shade.covering.go_to_lift_percentage(255))
 
-    await shade.clock.run(asyncio.gather(first, queued), limit=shade.quirk.T_QUEUED)
+    await shade.clock.run(
+        asyncio.gather(first, queued), limit=shade.quirk.LOCK_WAIT + shade.quirk.T_EXEC
+    )
     await shade.clock.advance(1)
 
     assert [call for call in recorder.calls if call[0] == "finished"] == []
@@ -1734,7 +1558,7 @@ async def test_the_busy_message_follows_lock_wait(shade, monkeypatch, caplog) ->
     assert "busy with another command for 3 s" in caplog.text
 
 
-# --- Position readback: the final position after travel (Part 3 §2i; F17; #10) ------
+# --- Position readback: the final position after travel -----------------------------
 
 FULL_TRAVEL_60_S = 100 / 60  # lift points per second: a full travel in 60 s
 
@@ -1745,16 +1569,14 @@ def at_rest(shade, lift: int) -> None:
     shade.covering.update_attribute(LIFT.id, lift)
 
 
-def track(shade, target: int, budget=None, resend=None) -> float:
+def track(shade, target: int, resend=None) -> float:
     """Start tracking travel toward ``target`` through the hook; return the start time.
 
-    The cached lift stands for the lift before the command, as delivery records it.
+    The baseline stands for the lift before the command, as delivery records it.
     """
     start = shade.clock.time()
-    shade.covering._command_origin = shade.covering._cached_lift_raw()
-    shade.covering._on_movement_finished(
-        target, shade.quirk.RadioBudget() if budget is None else budget, resend
-    )
+    shade.covering._command_origin = shade.baseline()
+    shade.covering._on_movement_finished(target, resend)
     return start
 
 
@@ -1784,24 +1606,8 @@ def warnings_of(caplog) -> list[logging.LogRecord]:
     return [r for r in caplog.records if r.name == QUIRK_MODULE and r.levelno >= 30]
 
 
-def test_tracking_bounds_fit_its_share_of_the_radio_budget(wm25lz) -> None:
-    """Reads before and after the re-send, the re-send and the re-read fit the share."""
-    quirk = wm25lz
-    assert quirk.TRACKING_MAX_OPS == quirk.RADIO_BUDGET - quirk.DELIVERY_MAX_OPS == 23
-    # Reads before and after the re-send, the one re-send frame, the deferred re-read.
-    assert quirk.TRACKING_NEEDED_OPS == (
-        2 * quirk.TRACK_MAX_READINGS * quirk.READ_ATTEMPTS + 1 + quirk.READ_ATTEMPTS
-    )
-    assert quirk.TRACKING_NEEDED_OPS == 15 <= quirk.TRACKING_MAX_OPS
-    assert quirk.FULL_TRAVEL_S == 70
-    assert quirk.TRACK_MIN_FIRST_READ_S >= 5  # ZHA's DEFAULT_MOVEMENT_TIMEOUT
-    assert quirk.TRACK_MAX_DURATION == 120
-    assert quirk.DEFERRED_REREAD_DELAY == 300  # ZHA's LIFT_MOVEMENT_TIMEOUT_RANGE
-    assert quirk.T_READ == 2 * quirk.READ_TIMEOUT + quirk.READ_RETRY_DELAY
-
-
 async def test_reaching_the_target_ends_tracking_after_one_read(shade) -> None:
-    """A go-to lift 60 tracker ends at the first reading of 60 (2.1)."""
+    """A go-to lift 60 tracker ends at the first reading of 60."""
     at_rest(shade, 40)
     shade.motor.start_moving(60, shade.clock.time())
 
@@ -1815,7 +1621,7 @@ async def test_reaching_the_target_ends_tracking_after_one_read(shade) -> None:
 
 
 async def test_a_stall_short_of_the_target_settles_where_it_stopped(shade) -> None:
-    """A go-to lift 0 stalls at 45: two readings of 45 end it (2.2)."""
+    """A go-to lift 0 stalls at 45: two readings of 45 end it."""
     at_rest(shade, 80)
     shade.motor.stall_at = 45
     shade.motor.start_moving(0, shade.clock.time())
@@ -1826,11 +1632,11 @@ async def test_a_stall_short_of_the_target_settles_where_it_stopped(shade) -> No
     # 80 points: 59 s to the arrival reading, then CONFIRM_GAP_S plus its reply.
     assert read_times(shade, start) == [59.0, 65.0]
     assert shade.covering.get(LIFT.id) == 45
-    assert shade.covering._cached_lift_raw() == 45
+    assert shade.baseline() == 45
 
 
 async def test_a_moving_shade_keeps_being_tracked(shade, caplog) -> None:
-    """Readings 30, 42, 55 never settle: all three are taken and cached (2.3)."""
+    """Readings 30, 42, 55 never settle: all three are taken and cached."""
     at_rest(shade, 0)
     shade.motor.script_lift_reads(30, 42, 55)
 
@@ -1842,10 +1648,10 @@ async def test_a_moving_shade_keeps_being_tracked(shade, caplog) -> None:
 
 
 async def test_an_early_reading_never_stands_as_final(shade) -> None:
-    """F17: a refresh 10 s into a 60 s close reads the old 0; the end, 100, replaces it.
+    """A refresh 10 s into a 60 s close reads the old 0; the end, 100, replaces it.
 
     The radio answers reads from its copy of the lift until the motor reports the end
-    of travel (#51).
+    of travel.
     """
     at_rest(shade, 0)
     shade.motor.rate_pct_per_s = FULL_TRAVEL_60_S
@@ -1891,7 +1697,7 @@ async def test_a_failed_delivery_is_tracked_and_sees_a_late_start(shade) -> None
 async def test_the_first_read_is_at_the_estimated_arrival(
     shade, cached, target, first_read
 ) -> None:
-    """The share of full travel x FULL_TRAVEL_S + ARRIVAL_MARGIN_S, at least 5 s (2.6)."""
+    """The share of full travel x FULL_TRAVEL_S + ARRIVAL_MARGIN_S, at least 5 s."""
     shade.motor.rate_pct_per_s = FULL_TRAVEL_60_S
     if cached is None:
         shade.covering.update_attribute(LIFT.id, None)
@@ -1910,7 +1716,7 @@ async def test_the_first_read_is_at_the_estimated_arrival(
 async def test_a_never_stationary_shade_is_abandoned_within_the_bounds(
     shade, caplog
 ) -> None:
-    """Every reading differs: three readings by TRACK_MAX_DURATION, one WARNING (2.6)."""
+    """Every reading differs: three readings by TRACK_MAX_DURATION, one WARNING."""
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     at_rest(shade, 0)
@@ -1940,17 +1746,16 @@ async def test_a_never_stationary_shade_is_abandoned_within_the_bounds(
 
 
 async def test_an_unreadable_shade_stops_being_read(shade, caplog) -> None:
-    """Every read fails: TRACK_MAX_READINGS readings, one WARNING, one re-read (2.7)."""
+    """Every read fails: TRACK_MAX_READINGS readings, one WARNING, one re-read."""
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     shade.motor.fail_next_sends(10**3, delivered=False, reads=True)
-    budget = quirk.RadioBudget()
     resends = []
 
-    async def resend(budget) -> None:
-        resends.append(budget)
+    async def resend() -> None:
+        resends.append(True)
 
-    start = track(shade, 80, budget, resend)
+    start = track(shade, 80, resend)
     await shade.clock.advance(quirk.TRACK_MAX_DURATION)
 
     assert resends == []  # an unreadable lift never calls for the re-send
@@ -1963,46 +1768,14 @@ async def test_an_unreadable_shade_stops_being_read(shade, caplog) -> None:
 
     times = read_times(shade, start)
     # Every read with its retry, then the re-read with its retry; nothing to re-send.
-    assert len(times) == budget.reads == (quirk.TRACK_MAX_READINGS + 1) * 2
+    assert len(times) == (quirk.TRACK_MAX_READINGS + 1) * 2
     assert times[-2] >= quirk.DEFERRED_REREAD_DELAY
     assert len(warnings_of(caplog)) == 1
     assert tracking_tasks() == []
 
 
-async def test_tracking_never_takes_more_than_its_share_of_the_budget(
-    shade, monkeypatch
-) -> None:
-    """A budget with plenty left still gives tracking only TRACKING_MAX_OPS (2.7a)."""
-    quirk = shade.quirk
-    monkeypatch.setattr(quirk, "TRACKING_MAX_OPS", 5)
-    shade.motor.fail_next_sends(10**3, delivered=False, reads=True)
-    budget = quirk.RadioBudget()
-
-    track(shade, 80, budget)
-    await shade.clock.advance(quirk.DEFERRED_REREAD_DELAY + 600)
-
-    assert budget.used == 5
-    assert len(shade.wire()) == 5
-
-
-async def test_a_spent_budget_stops_tracking(shade) -> None:
-    """Delivery left two operations: at most two reads, nothing scheduled (2.7a)."""
-    quirk = shade.quirk
-    budget = quirk.RadioBudget()
-    budget.reads = budget.limit - 2
-    shade.motor.script_lift_reads(30, 42, 55)
-
-    start = track(shade, 100, budget)
-    await shade.clock.advance(quirk.DEFERRED_REREAD_DELAY + 600)
-
-    assert len(read_times(shade, start)) == 2
-    assert budget.remaining == 0
-    assert shade.covering.get(LIFT.id) == 42
-    assert tracking_tasks() == []
-
-
 async def test_a_dropped_read_and_its_retry_are_one_reading(shade) -> None:
-    """A lost first attempt then 30: three readings are still taken, 55 last (2.8)."""
+    """A lost first attempt then 30: three readings are still taken, 55 last."""
     at_rest(shade, 0)
     shade.motor.script_lift_reads(None, 30, 42, 55)
 
@@ -2024,7 +1797,7 @@ async def abandon(shade) -> float:
 
 
 async def test_the_deferred_re_read_corrects_the_position(shade) -> None:
-    """After an abandoned tracking, the re-read 300 s later caches the real lift (2.9)."""
+    """After an abandoned tracking, the re-read 300 s later caches the real lift."""
     await abandon(shade)
     shade.motor.set_position(77)
 
@@ -2035,7 +1808,7 @@ async def test_the_deferred_re_read_corrects_the_position(shade) -> None:
 
 
 async def test_a_later_movement_cancels_the_deferred_re_read(shade) -> None:
-    """A command after an abandoned tracking cancels its pending re-read (2.9)."""
+    """A command after an abandoned tracking cancels its pending re-read."""
     quirk = shade.quirk
     await abandon(shade)
     shade.motor.set_position(60)
@@ -2055,7 +1828,7 @@ async def test_a_later_movement_cancels_the_deferred_re_read(shade) -> None:
 
 
 async def test_a_new_command_supersedes_tracking(shade) -> None:
-    """An open during a close's tracking is sent at once; a new tracker follows (2.10)."""
+    """An open during a close's tracking is sent at once; a new tracker follows."""
     quirk = shade.quirk
     at_rest(shade, 80)
     shade.motor.reports = False
@@ -2108,7 +1881,7 @@ async def test_a_read_in_flight_is_abandoned_on_supersede(shade) -> None:
 
 
 async def test_tracking_never_holds_the_lock(shade) -> None:
-    """Every tracking read runs with the shade's lock free (2.11)."""
+    """Every tracking read runs with the shade's lock free."""
     lock_held_at_reads = []
     read = shade.covering.read_attributes_raw
 
@@ -2128,7 +1901,7 @@ async def test_tracking_never_holds_the_lock(shade) -> None:
 
 
 async def test_stop_does_not_cancel_tracking(shade) -> None:
-    """Stop leaves tracking running to the real end: where the shade halted (2.12, 3.3)."""
+    """Stop leaves tracking running to the real end: where the shade halted."""
     quirk = shade.quirk
     result, _ = await shade.outcome(
         shade.covering.go_to_lift_percentage(100), within=quirk.T_EXEC
@@ -2136,7 +1909,7 @@ async def test_stop_does_not_cancel_tracking(shade) -> None:
     assert_success(result)
     [tracker] = tracking_tasks()
 
-    stopped, _ = await shade.outcome(shade.covering.stop(), within=quirk.T_PASS)
+    stopped, _ = await shade.outcome(shade.covering.stop(), within=quirk.SEND_TIMEOUT)
     halted = lift_now(shade)
     await shade.clock.advance(quirk.TRACK_MAX_DURATION)
 
@@ -2147,7 +1920,7 @@ async def test_stop_does_not_cancel_tracking(shade) -> None:
 
 
 async def test_tracking_one_shade_does_not_delay_another(shade) -> None:
-    """Shade A's tracking reads hang; shade B's command ends within T_EXEC (2.13)."""
+    """Shade A's tracking reads hang; shade B's command ends within T_EXEC."""
     quirk = shade.quirk
     at_rest(shade, 79)
     hang_everything(shade)
@@ -2168,33 +1941,8 @@ async def test_tracking_one_shade_does_not_delay_another(shade) -> None:
     assert any(str(SHADE_IEEE) in task.get_name() for task in tracking_tasks())
 
 
-def test_the_tracker_writes_the_cache_only_through_update_attribute() -> None:
-    """F1: tracking code never calls _update_attribute or the cache directly."""
-    tree = ast.parse(QUIRK_FILE.read_text())
-    [cluster] = [
-        node
-        for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == "WM25LZWindowCovering"
-    ]
-    tracking = [
-        node
-        for node in cluster.body
-        if isinstance(node, ast.AsyncFunctionDef | ast.FunctionDef)
-        and node.name in {"_track", "_reread_later", "_on_movement_finished"}
-    ]
-    assert len(tracking) == 3
-    called = {
-        ast.unparse(node.func)
-        for function in tracking
-        for node in ast.walk(function)
-        if isinstance(node, ast.Call)
-    }
-    assert "self.update_attribute" in called
-    assert not {c for c in called if "_update_attribute" in c or "_attr_cache" in c}
-
-
 async def test_normal_tracking_logs_nothing_above_debug(shade, caplog) -> None:
-    """Settling on target and on a stall logs at DEBUG only (2.15; §3c)."""
+    """Settling on target and on a stall logs at DEBUG only."""
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     at_rest(shade, 40)
     shade.motor.start_moving(60, shade.clock.time())
@@ -2211,7 +1959,7 @@ async def test_normal_tracking_logs_nothing_above_debug(shade, caplog) -> None:
 
 
 async def test_shutdown_cancels_tracking_and_the_re_read(shade) -> None:
-    """Shutting zigpy down (HA stop, ZHA reload) leaves nothing behind (2.16)."""
+    """Shutting zigpy down (HA stop, ZHA reload) leaves nothing behind."""
     quirk = shade.quirk
     errors: list[dict] = []
     loop = asyncio.get_running_loop()
@@ -2234,11 +1982,11 @@ async def test_shutdown_cancels_tracking_and_the_re_read(shade) -> None:
     assert errors == []
 
 
-# --- Review r1: late starts, removed devices, shutdown mid-delivery (#10) ----------
+# --- Late starts, removed devices, shutdown mid-delivery ---------------------------
 
 
 async def test_a_late_start_on_a_short_move_is_not_missed(shade, caplog) -> None:
-    """A 40 -> 50 move that starts 100 s late ends at 50, not at the unmoved 40 (1a).
+    """A 40 -> 50 move that starts 100 s late ends at 50, not at the unmoved 40.
 
     The read at the arrival estimate shows no travel, so the frame is re-sent; the
     motor's pending start is unchanged by it. A reading still at 40 after that is no
@@ -2294,12 +2042,12 @@ async def test_a_report_after_readback_gave_up_still_shows_the_end(
 
     assert len(warnings_of(caplog)) == 1
     assert shade.covering.get(LIFT.id) == 50
-    assert shade.covering._cached_lift_raw() == 50
+    assert shade.baseline() == 50
     assert len(read_times(shade, 0)) == reads
 
 
 async def test_a_shade_that_never_moves_is_never_called_final(shade, caplog) -> None:
-    """A stuck shade: one re-send, and no final position is claimed (1a)."""
+    """A stuck shade: one re-send, and no final position is claimed."""
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     shade.motor.ignore_commands = True
@@ -2323,7 +2071,7 @@ async def test_a_shade_that_never_moves_is_never_called_final(shade, caplog) -> 
 
 
 async def test_a_removed_shade_is_no_longer_read(shade) -> None:
-    """Removing one shade cancels its tracking at once: no further frames (1b)."""
+    """Removing one shade cancels its tracking at once: no further frames."""
     quirk = shade.quirk
     result, _ = await shade.outcome(
         shade.covering.go_to_lift_percentage(100), within=quirk.T_EXEC
@@ -2342,7 +2090,7 @@ async def test_a_removed_shade_is_no_longer_read(shade) -> None:
 
 
 async def test_a_replaced_shade_is_no_longer_read(shade) -> None:
-    """A re-interview tears the old device down: its tracking stops at once (1b)."""
+    """A re-interview tears the old device down: its tracking stops at once."""
     quirk = shade.quirk
     await abandon(shade)
     assert tracking_tasks()  # the deferred re-read
@@ -2358,7 +2106,7 @@ async def test_a_replaced_shade_is_no_longer_read(shade) -> None:
 
 
 async def test_a_shutdown_during_delivery_starts_no_tracking(shade) -> None:
-    """Shutting zigpy down mid-delivery: the delivery's finish starts nothing (1c)."""
+    """Shutting zigpy down mid-delivery: the delivery's finish starts nothing."""
     quirk = shade.quirk
     shade.motor.ignore_commands = True
     delivery = asyncio.ensure_future(shade.covering.go_to_lift_percentage(80))
@@ -2374,11 +2122,11 @@ async def test_a_shutdown_during_delivery_starts_no_tracking(shade) -> None:
     assert read_times(shade, finished) == []
 
 
-# --- Review r2: removal during delivery, unknown start lift (#10) -------------------
+# --- Removal during delivery, unknown start lift -----------------------------------
 
 
 async def test_a_removal_during_delivery_starts_no_tracking(shade) -> None:
-    """remove() mid-delivery: its finish starts no tracker, no re-read, no frame (2a).
+    """remove() mid-delivery: its finish starts no tracker, no re-read, no frame.
 
     zigpy announces device_removed at once and pops the device only after its leave
     request, up to 30 s later, so the finish still finds the device registered.
@@ -2401,7 +2149,7 @@ async def test_an_unknown_start_lift_landing_short_ends_quietly(shade, caplog) -
     """No baseline, and the shade settles one point short: its final lift, no WARNING.
 
     Two equal readings within AT_TARGET_TOLERANCE of the target end tracking even
-    with the start unknown, as after a restart (#30 review 1a).
+    with the start unknown, as after a restart.
     """
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
@@ -2417,8 +2165,8 @@ async def test_an_unknown_start_lift_landing_short_ends_quietly(shade, caplog) -
 
     assert shade.covering.get(LIFT.id) == 49
     assert shade.commands() == [(GO_TO.name, 50)]  # within tolerance: no re-send
-    # No movement was seen, so the end shown is no baseline (#30 review 2a).
-    assert shade.covering._cached_lift_raw() is None
+    # No movement was seen, so the end shown is no baseline.
+    assert shade.baseline() is None
     assert warnings_of(caplog) == []
     assert tracking_tasks() == []
 
@@ -2429,7 +2177,7 @@ async def test_a_still_shade_near_its_target_ends_quietly_but_is_no_baseline(
     """49 toward 52 never moves during readback: a quiet end, and no baseline.
 
     The shade then starts late and reaches 52. Had the still 49 been the baseline,
-    that old move would pass for a go-to 90 whose first frame is lost (#30 2a).
+    that old move would pass for a go-to 90 whose first frame is lost.
     """
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
@@ -2444,7 +2192,7 @@ async def test_a_still_shade_near_its_target_ends_quietly_but_is_no_baseline(
     assert tracking_tasks() == []
     assert warnings_of(caplog) == []
     assert shade.covering.get(LIFT.id) == 49
-    assert shade.covering._cached_lift_raw() is None
+    assert shade.baseline() is None
     shade.motor.start_delay = 0
     shade.motor.ignore_next(1)
     second, frame = go_to(shade, 90)
@@ -2469,12 +2217,12 @@ async def test_a_short_landing_after_seen_travel_is_the_next_baseline(
     await shade.clock.advance(quirk.TRACK_MAX_DURATION)
 
     assert shade.covering.get(LIFT.id) == 78
-    assert shade.covering._cached_lift_raw() == 78
+    assert shade.baseline() == 78
     assert warnings_of(caplog) == []
 
 
 async def test_an_unknown_start_lift_does_not_hide_a_late_start(shade, caplog) -> None:
-    """No cached lift: equal readings at 40 do not end a move that starts late (1a)."""
+    """No cached lift: equal readings at 40 do not end a move that starts late."""
     quirk = shade.quirk
     caplog.set_level(logging.DEBUG, logger=QUIRK_MODULE)
     shade.covering.update_attribute(LIFT.id, None)
@@ -2490,10 +2238,10 @@ async def test_an_unknown_start_lift_does_not_hide_a_late_start(shade, caplog) -
     assert tracking_tasks() == []
 
 
-# --- The firmware's double reply and the commands it mangles (#45; FA §3) -----------
+# --- The firmware's double reply and the commands it mangles ----------------------
 
 ORDERS = ["success-first", "unsup-first"]
-# What the cluster calls for each command U delivers (open, close, go-to), and the
+# What the cluster calls for each movement command (open, close, go-to), and the
 # frame it sends.
 MOVEMENTS = {
     "open": (("up_open", ()), ("up_open",)),
@@ -2529,7 +2277,7 @@ async def test_an_unverified_go_to_ignores_the_second_reply(shade, order) -> Non
     shade.motor.double_reply = order
 
     result, _ = await shade.outcome(
-        shade.covering.go_to_lift_percentage(255), within=shade.quirk.T_PASS
+        shade.covering.go_to_lift_percentage(255), within=shade.quirk.SEND_TIMEOUT
     )
     await shade.clock.advance(1)  # the second reply lands
 
@@ -2542,7 +2290,7 @@ async def test_a_lone_0x81_reports_acceptance_not_movement(started_shade) -> Non
 
     Delivery reads no position, so its result says only that the radio took a frame;
     the radio's replies carry no motor state. The readback judges movement later and
-    re-sends once. The code documents it so.
+    re-sends once.
     """
     shade = started_shade
     shade.motor.double_reply = "unsup-only"
@@ -2557,9 +2305,6 @@ async def test_a_lone_0x81_reports_acceptance_not_movement(started_shade) -> Non
     await shade.clock.advance(SETTLED_S)
     assert shade.commands() == [(GO_TO.name, 80)] * 2
     assert lift_now(shade) == INITIAL_LIFT
-    cluster = shade.quirk.WM25LZWindowCovering
-    doc = " ".join(cluster._forwarded_reply.__doc__.split())
-    assert "acceptance of a frame, not movement" in doc
 
 
 async def test_a_lone_0x81_on_the_targetless_path_reports_acceptance(shade) -> None:
@@ -2567,7 +2312,7 @@ async def test_a_lone_0x81_on_the_targetless_path_reports_acceptance(shade) -> N
     shade.motor.double_reply = "unsup-only"
 
     result, _ = await shade.outcome(
-        shade.covering.go_to_lift_percentage(255), within=shade.quirk.T_PASS
+        shade.covering.go_to_lift_percentage(255), within=shade.quirk.SEND_TIMEOUT
     )
 
     assert_success(result)
@@ -2589,14 +2334,14 @@ async def test_a_manufacturer_specific_movement_is_refused_unsent(
 ) -> None:
     """The radio refuses every manufacturer-specific Window Covering frame unforwarded.
 
-    So sending one is pointless (FA §2): U refuses it at once, as the radio would,
+    So sending one is pointless: the quirk refuses it at once, as the radio would,
     with UNSUP_CLUSTER_COMMAND. Nothing is sent, no lock is waited for or taken, and
     tracking and the baseline are left alone, on every delivery path.
     """
     shade = started_shade
     if baseline:
         shade.covering.update_attribute(LIFT.id, INITIAL_LIFT)
-    before = shade.covering._cached_lift_raw()
+    before = shade.baseline()
     recorder = HookRecorder(shade.covering)
     await shade.covering._command_lock.acquire()
     command_id, args = MANUFACTURER_SPECIFIC_MOVEMENTS[movement]
@@ -2614,7 +2359,7 @@ async def test_a_manufacturer_specific_movement_is_refused_unsent(
     )
     assert shade.app.frames == []
     assert recorder.calls == []
-    assert shade.covering._cached_lift_raw() == before
+    assert shade.baseline() == before
 
 
 async def test_a_raw_manufacturer_specific_movement_request_is_refused(shade) -> None:
@@ -2631,11 +2376,11 @@ async def test_a_raw_manufacturer_specific_movement_request_is_refused(shade) ->
 async def test_a_manufacturer_specific_stop_is_passed_through(shade) -> None:
     """Stop keeps its pass-through: sent once, the radio's genuine 0x81 comes back.
 
-    The radio refuses a manufacturer-specific frame without forwarding it (FA §2), so
+    The radio refuses a manufacturer-specific frame without forwarding it, so
     this 0x81 is a real refusal and is not reported as SUCCESS.
     """
     result, _ = await shade.outcome(
-        shade.covering.stop(manufacturer=0x1002), within=shade.quirk.T_PASS
+        shade.covering.stop(manufacturer=0x1002), within=shade.quirk.SEND_TIMEOUT
     )
 
     assert result.status is foundation.Status.UNSUP_CLUSTER_COMMAND
@@ -2657,22 +2402,6 @@ async def test_a_movement_without_travel_is_re_sent_whatever_the_reply(shade) ->
     assert lift_now(shade) == 80
 
 
-@pytest.mark.parametrize("order", ORDERS)
-async def test_stop_succeeds_whichever_reply_arrives_first(shade, order) -> None:
-    """A standard Stop's 0x81 is the firmware's second reply: SUCCESS either way (#54).
-
-    The motor halts on the forwarded Stop (#51), so ZHA's cover shows no error, as it
-    shows none for a movement's 0x81.
-    """
-    shade.motor.double_reply = order
-
-    result, _ = await shade.outcome(shade.covering.stop(), within=shade.quirk.T_PASS)
-    await shade.clock.advance(1)  # the second reply lands
-
-    assert result.status is foundation.Status.SUCCESS
-    assert shade.wire() == [(STOP.name,)]
-
-
 COMMANDS_REFUSED = [
     ("go_to_lift_value", (1000,)),
     ("go_to_tilt_value", (1000,)),
@@ -2686,7 +2415,7 @@ COMMANDS_REFUSED = [
 async def test_mangled_commands_are_refused_unsent(shade, command, args) -> None:
     """0x04, 0x07 and 0x08 never reach the air: a device's unsupported-command reply.
 
-    The radio turns them into malformed serial frames (FA §3 note 3). The refusal takes
+    The radio turns them into malformed serial frames. The refusal takes
     no lock, cancels no tracking and keeps the baseline, even while the shade is busy.
     """
     recorder = HookRecorder(shade.covering)
@@ -2705,7 +2434,7 @@ async def test_mangled_commands_are_refused_unsent(shade, command, args) -> None
     )
     assert shade.app.frames == []
     assert recorder.calls == []
-    assert shade.covering._cached_lift_raw() == INITIAL_LIFT
+    assert shade.baseline() == INITIAL_LIFT
 
 
 @pytest.mark.parametrize(

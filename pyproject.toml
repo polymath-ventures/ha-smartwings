@@ -69,4 +69,4 @@ combine-as-imports = true
 split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
-max-complexity = 27
+max-complexity = 12

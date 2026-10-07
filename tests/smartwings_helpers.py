@@ -10,6 +10,7 @@ from zigpy.profiles import zha as zha_profile
 import zigpy.types as t
 from zigpy.zcl.clusters.general import Basic, OnOff
 
+from custom_components.smartwings import bundle
 from custom_components.smartwings.const import DOMAIN, QUIRK_ID
 from custom_components.smartwings.shades import ShadeDirectory
 from tests.quirk.conftest import QUIRK_FILE
@@ -19,8 +20,9 @@ from tests.zha_harness.radio import SHADE_NODE_DESCRIPTOR
 
 ENTRY_ID = "01K0SMARTWINGS000000000000"
 ISSUE_ID = "quirk_not_loaded"
-# Installed under its own name, as the README tells the user to.
 QUIRK_NAME = QUIRK_FILE.name
+# The quirk file as the integration installs it: the marker, then the source.
+INSTALLED_QUIRK = bundle.MARKER.encode() + b"\n" + QUIRK_FILE.read_bytes()
 
 # A device that is not a shade, for discovery to pass over.
 PLUG_IEEE = t.EUI64.convert("00:0d:6f:00:0a:bc:de:01")
@@ -90,7 +92,7 @@ def record_issue_events(harness: ZhaHarness) -> list[str]:
 
 
 def record_updates(shades: ShadeDirectory) -> list[dict[str, bool]]:
-    """Collect, at each listener call, every shade's IEEE and whether U is active."""
+    """Collect, at each listener call, every shade's IEEE and whether the quirk is active."""
     seen: list[dict[str, bool]] = []
     shades.add_listener(
         lambda: seen.append(
@@ -101,14 +103,14 @@ def record_updates(shades: ShadeDirectory) -> list[dict[str, bool]]:
 
 
 def quirk_loaded(harness: ZhaHarness, ieee: t.EUI64 = SHADE_IEEE) -> bool:
-    """Return whether ZHA's device for ``ieee`` was built with U (its quirk ID)."""
+    """Return whether ZHA's device for ``ieee`` was built with the quirk (its ID)."""
     proxy = get_zha_gateway_proxy(harness.hass).device_proxies[ieee]
     return QUIRK_ID in proxy.device.exposes_features
 
 
 async def supply_quirk(harness: ZhaHarness) -> None:
-    """Put this repository's quirk in custom_quirks_path, as the user installs it."""
-    (harness.custom_quirks_path / QUIRK_NAME).write_text(QUIRK_FILE.read_text())
+    """Put the quirk in custom_quirks_path, as the integration installs it."""
+    (harness.custom_quirks_path / QUIRK_NAME).write_bytes(INSTALLED_QUIRK)
 
 
 async def seed_plug(harness: ZhaHarness) -> None:

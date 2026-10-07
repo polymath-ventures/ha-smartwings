@@ -1,9 +1,9 @@
 """A zigpy radio stub for the SmartWings harness: a real zigpy stack with no hardware.
 
 Every outgoing frame leaves zigpy through ``send_packet``, so that is the one place frames
-are captured. Replies (from the motor model, later) re-enter through zigpy's real
+are captured. Replies from the motor model re-enter through zigpy's real
 ``packet_received`` path, so request/response matching, retries and TSNs are zigpy's own.
-So do the lift reports the radio pushes whenever the motor sends a position (#51).
+So do the lift reports the radio pushes whenever the motor sends a position.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ SHADE_IEEE = t.EUI64.convert("60:83:da:ff:fe:a0:00:02")
 SHADE_NWK = t.NWK(0x5A1F)
 COORDINATOR_IEEE = t.EUI64.convert("00:15:8d:00:02:32:4f:32")
 
-# The WM25/L-Z as it identifies itself (docs Part 1 §2, "Identity").
+# The WM25/L-Z as it identifies itself.
 SHADE_MANUFACTURER = "Smartwings"
 SHADE_MODEL = "WM25/L-Z"
 SHADE_INPUT_CLUSTERS = (0x0000, 0x0001, 0x0003, 0x0004, 0x0005, 0x0102)
@@ -55,7 +55,7 @@ SHADE_NODE_DESCRIPTOR = zdo_t.NodeDescriptor(
     maximum_outgoing_transfer_size=82,
     descriptor_capability_field=zdo_t.NodeDescriptor.DescriptorCapability.NONE,
 )
-# WindowCovering attributes as measured on the real shades (docs Part 1 §2).
+# WindowCovering attributes as measured on the real shades.
 SHADE_COVERING_ATTRIBUTES = {
     WindowCovering.AttributeDefs.window_covering_type.id: 0,
     WindowCovering.AttributeDefs.config_status.id: 0x03,

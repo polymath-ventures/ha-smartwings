@@ -12,8 +12,6 @@ from .repairs_missing import ISSUE_ID, MissingQuirkIssue
 from .shades import ShadeDirectory, is_removal_or_rename
 from .zha_gateway import SIGNAL_ADD_ENTITIES, async_gateway
 
-__all__ = ["DOMAIN"]
-
 type SmartWingsConfigEntry = ConfigEntry[ShadeDirectory]
 
 

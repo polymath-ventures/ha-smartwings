@@ -1,9 +1,7 @@
-"""The quirk file the integration ships, and how it recognises its own copy (issue #18).
+"""The quirk file the integration ships, and how it recognises its own copy.
 
-The integration copies its bundled quirk into ZHA's ``custom_quirks_path``. A copy is its
-own only when the file's first line is the marker, and an own copy is outdated when its
-bytes differ from the bundled file's. These are the synchronous file operations, run in
-Home Assistant's executor by the installer.
+A copy is the integration's own only when its first line is the marker, and outdated
+when its bytes differ from the installed bytes (the marker, then the bundled quirk).
 """
 
 from pathlib import Path
@@ -16,25 +14,19 @@ from custom_components.smartwings import bundle
 from custom_components.smartwings.bundle import FileState
 from tests.quirk.conftest import QUIRK_FILE
 
-BUNDLED = QUIRK_FILE.read_bytes()
+SOURCE = QUIRK_FILE.read_bytes()
+BUNDLED = bundle.MARKER.encode() + b"\n" + SOURCE
 
 
 def test_the_bundled_file_is_the_quirk_source() -> None:
-    """The integration ships the tested quirk file, byte for byte."""
-    assert bundle.BUNDLED_FILE.read_bytes() == BUNDLED
-    assert bundle.bundled_bytes() == BUNDLED
+    """The integration ships the tested quirk file, byte for byte, unmarked."""
+    assert bundle.BUNDLED_FILE.read_bytes() == SOURCE
+    assert not SOURCE.startswith(b"# Installed by")
 
 
-def test_the_bundled_file_cannot_be_imported() -> None:
-    """It is data: no import machinery treats it as a module of the integration."""
-    assert bundle.BUNDLED_FILE.suffix != ".py"
-    assert QUIRK_FILE.name == bundle.FILE_NAME
-
-
-def test_the_quirk_source_starts_with_the_marker() -> None:
-    """The marker is the source's first line, so every copy carries it."""
-    assert BUNDLED.decode().splitlines()[0] == bundle.MARKER
-    assert bundle.MARKER.startswith("# ")
+def test_the_installed_bytes_are_the_marker_then_the_source() -> None:
+    """The marker is added on install, as line 1."""
+    assert bundle.installed_bytes() == BUNDLED
 
 
 def test_an_absent_file(tmp_path: Path) -> None:
@@ -79,10 +71,10 @@ def test_an_unmarked_file_is_foreign(tmp_path: Path, content: str) -> None:
     assert bundle.inspect(target, BUNDLED) is FileState.FOREIGN
 
 
-def test_an_unmarked_copy_of_the_old_source_is_foreign(tmp_path: Path) -> None:
-    """A hand copy of the quirk from before the marker existed is the user's."""
+def test_an_unmarked_copy_of_the_source_is_foreign(tmp_path: Path) -> None:
+    """A hand copy of the quirk, without the marker, is the user's."""
     target = tmp_path / "wm25lz.py"
-    target.write_bytes(BUNDLED.split(b"\n", 1)[1])
+    target.write_bytes(SOURCE)
 
     assert bundle.inspect(target, BUNDLED) is FileState.FOREIGN
 

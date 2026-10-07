@@ -90,8 +90,8 @@ async def clock() -> AsyncIterator[VirtualClock]:
 def new_motor() -> MotorSim:
     """Return a healthy motor at the seeded lift.
 
-    Like the real units, raw down_close lowers it (Part 1 §3c); the vendor quirk's swap
-    assumes the reverse.
+    Like the real units, raw down_close lowers it; the vendor quirk's swap assumes the
+    reverse.
     """
     return MotorSim(position=INITIAL_LIFT, rate_pct_per_s=5.0, reply_latency=1.0)
 
@@ -134,6 +134,11 @@ class Shade:
     def wire(self, nwk: int = SHADE_NWK) -> list[tuple[Any, ...]]:
         """Return the decoded WindowCovering frames sent to a shade (see ``wire``)."""
         return wire(self.app, nwk)
+
+    def baseline(self) -> int | None:
+        """Return the lift the next movement would take as its baseline, if any."""
+        covering = self.covering
+        return covering._raw_lift if covering._raw_lift_is_baseline else None
 
     def commands(self, nwk: int = SHADE_NWK) -> list[tuple[Any, ...]]:
         """Return only the command frames (not reads) sent to a shade."""

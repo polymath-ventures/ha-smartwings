@@ -1,11 +1,11 @@
 """Install and update the integration's quirk file in ZHA's custom_quirks_path.
 
-ZHA loads quirks only when its entry sets up (Part 2 §3c), so until the quirk (U) ships
-in the zha-quirks package Home Assistant pins, the integration copies its bundled file
-into ZHA's ``custom_quirks_path`` and asks for a restart through a Repairs issue (#18,
-Part 3 §1b item 3, §3i). It never imports the file, never reloads ZHA, never touches a
-file that is not its own, and never deletes a file. Once zha-quirks provides U, it stops
-updating its file and says the user may delete it and the ``custom_quirks_path`` line.
+ZHA loads quirks only when its entry sets up, so until the quirk ships in the
+zha-quirks package Home Assistant pins, the integration copies its bundled file into
+ZHA's ``custom_quirks_path`` and asks for a restart through a Repairs issue. It never
+imports the file, never reloads ZHA, never touches a file that is not its own, and never
+deletes a file. Once zha-quirks provides the quirk, it stops updating its file and says
+the user may delete it and the ``custom_quirks_path`` line.
 
 One reconciliation runs at entry setup and each time ZHA's entry becomes loaded again.
 Every file operation runs in the executor, a check and its write in one job. The restart
@@ -61,7 +61,7 @@ class QuirkInstaller:
     def __init__(
         self, hass: HomeAssistant, entry: ConfigEntry, shades: ShadeDirectory
     ) -> None:
-        """Reconcile for ``entry``, judging whether U is active from ``shades``."""
+        """Reconcile for ``entry``, judging whether the quirk is active from ``shades``."""
         self.hass = hass
         self.entry = entry
         self.shades = shades
@@ -107,7 +107,7 @@ class QuirkInstaller:
         tracked = self.shades.shades.values()
         active = bool(tracked) and all(shade.quirk_active for shade in tracked)
         wanted: dict[str, dict[str, str]] = {}
-        bundled = await self.hass.async_add_executor_job(bundle.bundled_bytes)
+        installed = await self.hass.async_add_executor_job(bundle.installed_bytes)
         upstream = zha_quirks_provide_quirk(configured)
         if configured is None and not active and not upstream:
             wanted[ISSUE_PATH_MISSING] = {"path": f"{folder}/"}
@@ -115,14 +115,14 @@ class QuirkInstaller:
             if upstream:
                 # Stop updating; the user decides whether to delete the file.
                 state = await self.hass.async_add_executor_job(
-                    bundle.inspect, target, bundled
+                    bundle.inspect, target, installed
                 )
                 if state in (FileState.CURRENT, FileState.OUTDATED):
                     wanted[ISSUE_UPSTREAM] = {"file": str(target)}
                 self._async_raise(wanted)
                 return
             result = await self.hass.async_add_executor_job(
-                partial(bundle.sync, target, bundled, install_if_absent=not active)
+                partial(bundle.sync, target, installed, install_if_absent=not active)
             )
         except OSError as err:
             _LOGGER.error(
