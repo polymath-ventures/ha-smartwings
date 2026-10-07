@@ -221,6 +221,17 @@ async def test_a_failed_send_is_sent_once_more_after_2_5_s(shade) -> None:
     assert shade.commands() == [GO_80] * 2
 
 
+async def test_a_callers_retries_do_not_replace_the_quirks_own(shade) -> None:
+    """A caller asking for retries still gets only the quirk's own, 2.5 s later."""
+    shade.motor.fail_next_sends(1, delivered=False)
+
+    assert status(await shade.covering.go_to_lift_percentage(80, retries=3)) == SUCCESS
+
+    first, second = send_times(shade)
+    assert 2.5 <= second - first <= 2.5 + JITTER_S
+    assert shade.commands() == [GO_80] * 2
+
+
 async def test_two_lost_frames_fail(shade) -> None:
     """Both frames lost: FAILURE for ZHA's own failure path, and no third frame."""
     shade.motor.drop_next(2)

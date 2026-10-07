@@ -152,7 +152,7 @@ class WM25LZWindowCovering(CustomCluster, WindowCovering):
         self, command_id: int, schema: Any, *args: Any, **kwargs: Any
     ) -> Any:
         """Send one frame; report the radio's second reply, 0x81, as SUCCESS."""
-        kwargs = {"retries": 0, **kwargs}
+        kwargs = {**kwargs, "retries": 0}
         async with asyncio.timeout(SEND_TIMEOUT):
             reply = await super().request(False, command_id, schema, *args, **kwargs)
         if getattr(reply, "status", None) == foundation.Status.UNSUP_CLUSTER_COMMAND:
