@@ -1,7 +1,7 @@
 """The missing-quirk Repairs issue: real Home Assistant, real ZHA.
 
-ZHA resolves every device before the integration is set up, so only the quirk in
-``custom_quirks_path`` can make it the loaded quirk.
+A shade lacks the quirk only when another quirk takes precedence even after the
+integration reloaded ZHA: here, a quirk for the WM25/L-Z in ZHA's custom_quirks_path.
 """
 
 import json
@@ -24,7 +24,7 @@ from tests.smartwings_helpers import (
     install,
     issue,
     record_issue_events,
-    supply_quirk,
+    unshadow,
     zha_device,
 )
 from tests.zha_harness import SHADE_IEEE, ZhaHarness, seed_database
@@ -78,47 +78,35 @@ async def add_second_shade(harness: ZhaHarness) -> None:
     await harness.start()
 
 
-def block_the_install(harness: ZhaHarness) -> None:
-    """Put a file of the user's where the quirk goes, so the integration cannot install."""
-    (harness.custom_quirks_path / "wm25lz.py").write_text(
-        "# Not the SmartWings quirk.\n"
-    )
-
-
 # --- Setup order ----------------------------------------------------------------------
 
 
-async def test_setup_order_with_only_the_integration(
-    zha_harness_without_quirks_path: ZhaHarness,
+async def test_a_restart_with_another_quirk_in_front_names_the_shade(
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
-    """Integration installed, quirk absent, restart: the Repairs issue names the shade.
-
-    Without custom_quirks_path the integration cannot supply the quirk.
-    """
-    zha_harness = zha_harness_without_quirks_path
+    """Integration installed, another quirk in front, restart: the issue names the shade."""
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     await rename(zha_harness, SHADE_IEEE, "Office")
 
     await zha_harness.restart()
 
-    assert sorted(domain_issues(zha_harness)) == [
-        "custom_quirks_path_missing",
-        ISSUE_ID,
-    ]
+    assert domain_issues(zha_harness) == [ISSUE_ID]
     assert f"- Office ({SHADE})" in shown(zha_harness)
-    assert "custom_quirks_path" in shown(zha_harness)
     assert directory(zha_harness).shades[SHADE].quirk_active is False
 
 
-async def test_setup_order_with_the_quirk_in_custom_quirks_path(
-    zha_harness: ZhaHarness,
+async def test_a_restart_with_the_quirk_raises_nothing(
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
-    """Integration installed, quirk in custom_quirks_path, restart: no Repairs issue."""
-    await install(zha_harness)
-    await supply_quirk(zha_harness)
+    """The other quirk deleted, restart: no Repairs issue, and not even its record."""
+    await install(zha_harness_shadowed)
+    assert issue(zha_harness_shadowed) is not None
+    unshadow(zha_harness_shadowed)
 
-    await zha_harness.restart()
+    await zha_harness_shadowed.restart()
 
+    zha_harness = zha_harness_shadowed
     assert domain_issues(zha_harness) == []
     # Not even the inactive record Home Assistant keeps of an issue across a restart.
     assert ir.async_get(zha_harness.hass).async_get_issue(DOMAIN, ISSUE_ID) is None
@@ -129,10 +117,10 @@ async def test_setup_order_with_the_quirk_in_custom_quirks_path(
 
 
 async def test_the_issue_says_what_is_wrong_and_how_to_fix_it(
-    zha_harness_without_quirks_path: ZhaHarness, caplog: pytest.LogCaptureFixture
+    zha_harness_shadowed: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     """One stock Repairs issue, translated, with the remedy, and one WARNING."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
 
     raised = issue(zha_harness)
@@ -148,10 +136,10 @@ async def test_the_issue_says_what_is_wrong_and_how_to_fix_it(
 
 
 async def test_an_unchanged_set_is_not_reported_again(
-    zha_harness_without_quirks_path: ZhaHarness, caplog: pytest.LogCaptureFixture
+    zha_harness_shadowed: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Rediscovery with the same shades changes no issue and logs nothing new."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     events = record_issue_events(zha_harness)
 
@@ -164,10 +152,10 @@ async def test_an_unchanged_set_is_not_reported_again(
 
 
 async def test_the_set_shrinks_when_a_shade_is_removed(
-    zha_harness_without_quirks_path: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """Two shades named, one removed: only the other is named."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await add_second_shade(zha_harness)
     await install(zha_harness)
     await rename(zha_harness, SHADE_IEEE, "Office")
@@ -186,10 +174,10 @@ async def test_the_set_shrinks_when_a_shade_is_removed(
 
 
 async def test_renaming_a_shade_renames_it_in_the_issue(
-    zha_harness_without_quirks_path: ZhaHarness, caplog: pytest.LogCaptureFixture
+    zha_harness_shadowed: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     """The user renames a shade's device: the issue follows, with no rediscovery."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     events = record_issue_events(zha_harness)
 
@@ -204,10 +192,10 @@ async def test_renaming_a_shade_renames_it_in_the_issue(
 
 
 async def test_a_rename_that_leaves_the_text_alone_changes_nothing(
-    zha_harness_without_quirks_path: ZhaHarness, caplog: pytest.LogCaptureFixture
+    zha_harness_shadowed: ZhaHarness, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Naming a shade what it is already called changes no issue and logs nothing."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     events = record_issue_events(zha_harness)
 
@@ -218,23 +206,25 @@ async def test_a_rename_that_leaves_the_text_alone_changes_nothing(
 
 
 async def test_the_issue_is_deleted_once_the_quirk_is_active(
-    zha_harness: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
-    """Quirk supplied and ZHA reloaded: every shade has it, so the issue goes."""
-    block_the_install(zha_harness)
+    """The other quirk deleted and ZHA reloaded: every shade has the quirk, issue gone."""
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     assert issue(zha_harness) is not None
 
-    await supply_quirk(zha_harness)
+    unshadow(zha_harness)
     await zha_harness.reload_zha()
 
     assert directory(zha_harness).shades[SHADE].quirk_active is True
     assert domain_issues(zha_harness) == []
 
 
-async def test_zha_down_leaves_the_issue_alone(zha_harness: ZhaHarness) -> None:
+async def test_zha_down_leaves_the_issue_alone(
+    zha_harness_shadowed: ZhaHarness,
+) -> None:
     """While ZHA is unloaded nothing is reported, and nothing is withdrawn."""
-    block_the_install(zha_harness)
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     hass = zha_harness.hass
     events = record_issue_events(zha_harness)
@@ -244,17 +234,17 @@ async def test_zha_down_leaves_the_issue_alone(zha_harness: ZhaHarness) -> None:
     assert issue(zha_harness) is not None
     assert events == []
 
-    await supply_quirk(zha_harness)
+    unshadow(zha_harness)
     assert await hass.config_entries.async_setup(ZHA_ENTRY_ID)
     await hass.async_block_till_done()
     assert domain_issues(zha_harness) == []
 
 
 async def test_the_last_shade_removed_while_zha_is_down(
-    zha_harness_without_quirks_path: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """The only affected shade goes while ZHA is down: no issue once ZHA is back."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     hass = zha_harness.hass
     assert issue(zha_harness) is not None
@@ -277,10 +267,10 @@ async def test_the_last_shade_removed_while_zha_is_down(
 
 
 async def test_a_restart_with_no_shades_leaves_no_issue_record(
-    zha_harness_without_quirks_path: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """The shade was dropped from zigpy's database: no issue, active or inactive."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     assert issue(zha_harness) is not None
     await zha_harness.stop()
@@ -294,10 +284,10 @@ async def test_a_restart_with_no_shades_leaves_no_issue_record(
 
 
 async def test_removing_the_entry_deletes_the_issue(
-    zha_harness_without_quirks_path: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """Deleting the integration leaves no Repairs issue behind."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     await install(zha_harness)
     assert issue(zha_harness) is not None
 

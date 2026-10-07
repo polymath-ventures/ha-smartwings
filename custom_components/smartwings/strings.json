@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Installs the SmartWings quirk for WM25/L-Z shades paired with Zigbee Home Automation (ZHA), keeps it up to date, and tells you when ZHA has not loaded it. Set each shade's limits with its remote: the shade stops at them for Home Assistant too."
+        "description": "Adds the SmartWings quirk to Zigbee Home Automation (ZHA) for WM25/L-Z shades, and tells you when ZHA has not applied it. If ZHA is already running, SmartWings reloads it once, so your Zigbee devices are unavailable for a few seconds. Set each shade's limits with its remote: the shade stops at them for Home Assistant too."
       }
     },
     "abort": {
@@ -11,33 +11,17 @@
   },
   "exceptions": {
     "zha_not_ready": {
-      "message": "Zigbee Home Automation (ZHA) is not running yet."
+      "message": "Zigbee Home Automation (ZHA) is not set up."
     }
   },
   "issues": {
     "quirk_not_loaded": {
       "title": "SmartWings quirk not loaded",
-      "description": "ZHA did not load the SmartWings quirk for these shades:\n\n{shades}\n\nWithout it, ZHA uses the quirk that comes with Home Assistant, which swaps the Open and Close commands for these shades and lacks the SmartWings fixes.\n\nTo fix this, install the SmartWings quirk in the folder set as ZHA's `custom_quirks_path`, then restart Home Assistant."
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nAnother quirk for these shades may take precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant."
     },
-    "custom_quirks_path_missing": {
-      "title": "Set ZHA's custom_quirks_path for the SmartWings quirk",
-      "description": "Zigbee Home Automation (ZHA) loads the SmartWings quirk only from the folder set as its `custom_quirks_path`, and none is set, so ZHA uses the quirk that comes with Home Assistant instead. Add the line to the `zha:` section of `configuration.yaml`, adding the `zha:` line too if there is none:\n\n```yaml\nzha:\n  custom_quirks_path: {path}\n```\n\nThen restart Home Assistant. SmartWings keeps its quirk file in that folder up to date."
-    },
-    "restart_required": {
-      "title": "Restart to load the SmartWings quirk",
-      "description": "SmartWings installed the current SmartWings quirk as {file}. Zigbee Home Automation (ZHA) loads quirks only when it starts, so it uses this file only after you restart Home Assistant, or reload ZHA (Settings → Devices & services → Zigbee Home Automation → ⋮ → Reload). Until then ZHA keeps the quirk it started with."
-    },
-    "quirk_file_conflict": {
-      "title": "SmartWings quirk file is in the way",
-      "description": "{file} was not installed by SmartWings: its first line is not\n\n`{marker}`\n\nSo SmartWings leaves it alone, and Zigbee Home Automation (ZHA) did not load the SmartWings quirk from it. To let SmartWings install and update the quirk, delete that file or move it out of the folder, then restart Home Assistant or reload ZHA. SmartWings then installs its own copy and asks for one more restart."
-    },
-    "quirk_file_not_written": {
-      "title": "SmartWings could not update its quirk file",
-      "description": "SmartWings could not write or read {file}: {error}\n\nZHA cannot load the SmartWings quirk until the file is there. Check that Home Assistant can write to that folder, then restart Home Assistant. You can also copy `quirk/zhaquirks/smartwings/wm25lz.py` from the SmartWings repository there by hand. The integration leaves a copy you made alone, so you must update it yourself."
-    },
-    "quirk_now_upstream": {
-      "title": "The SmartWings quirk is now part of Home Assistant",
-      "description": "The Zigbee Home Automation (ZHA) quirks that come with Home Assistant now include the SmartWings quirk, so SmartWings no longer updates its own copy, {file}. You may delete that file, then restart Home Assistant so ZHA uses the built-in quirk. If nothing else uses ZHA's `custom_quirks_path` folder, you can also remove the `custom_quirks_path` line from `configuration.yaml`."
+    "quirk_not_loaded_quirks_off": {
+      "title": "SmartWings quirk not loaded",
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nZHA's quirks are turned off (`enable_quirks: false` in the `zha:` section of `configuration.yaml`), so SmartWings does not add its quirk. To use it, remove that line, then restart Home Assistant."
     }
   }
 }

@@ -18,21 +18,18 @@ from zigpy.zcl.clusters.closures import WindowCovering
 from zigpy.zcl.clusters.general import PowerConfiguration
 
 from custom_components.smartwings.const import QUIRK_ID
-from tests.quirk.conftest import QUIRK_FILE
+from tests.smartwings_helpers import install
 from tests.zha_harness import SHADE_IEEE, ZhaHarness, open_zha_harness, report_packet
 from tests.zha_harness.harness import ZHA_ENTRY_ID
 
-# Installed under its own name.
-QUIRK_NAME = QUIRK_FILE.name
 BATTERY = PowerConfiguration.AttributeDefs.battery_percentage_remaining
 COMMANDS = WindowCovering.ServerCommandDefs
 GO_TO = COMMANDS.go_to_lift_percentage.name
 
 
 async def install_quirk(harness: ZhaHarness) -> None:
-    """Supply the quirk through custom_quirks_path and restart, as a user does."""
-    (harness.custom_quirks_path / QUIRK_NAME).write_text(QUIRK_FILE.read_text())
-    await harness.restart()
+    """Add the integration, as a user does, so the shade gets the quirk."""
+    await install(harness)
     harness.frames.clear()
 
 
@@ -45,7 +42,7 @@ async def stock(tmp_path, hass_storage) -> AsyncIterator[ZhaHarness]:
 
 @pytest.fixture
 async def harness(stock) -> ZhaHarness:
-    """Boot the harness with the quirk supplied through custom_quirks_path."""
+    """Boot the harness with the integration added, so the shade has the quirk."""
     await install_quirk(stock)
     return stock
 

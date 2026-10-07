@@ -1,30 +1,35 @@
 """The ZHA surfaces this integration relies on, in one place.
 
-ZHA's helpers are not a stable public API; the harness tests pin their behaviour, so an
-upgrade that changes them fails the tests rather than the user's shades.
+ZHA's helpers and quirk registry are not a stable public API; the harness tests pin their
+behaviour, so an upgrade that changes them fails the tests rather than the user's shades.
+
+ZHA's resolver takes, for a device, the first matching entry in ``zha.quirks.
+DEVICE_REGISTRY``, and every registration goes in front. ``QuirkBuilder.add_to_registry``
+registers at once, but zha-quirks' own v1 quirks (the vendor quirk for the WM25/L-Z among
+them) reach the registry only when ``zhaquirks.setup()`` drains them. So the quirk is
+registered after that drain, and put in front again whenever the integration sets up.
 """
 
-import os
-from pathlib import Path
+import contextlib
+import dataclasses
+import importlib
 
-from homeassistant.components.zha.const import CONF_CUSTOM_QUIRKS_PATH
 from homeassistant.components.zha.helpers import (
     SIGNAL_ADD_ENTITIES,
     ZHAGatewayProxy,
-    get_zha_data,
     get_zha_gateway_proxy,
 )
 from homeassistant.core import HomeAssistant, callback
-import zha.quirks
-
-from .const import QUIRK_ID, SHADE_MANUFACTURER, SHADE_MODEL
+from zha.quirks import DEVICE_REGISTRY, QuirkRegistryEntry
+import zhaquirks
 
 __all__ = [
     "SIGNAL_ADD_ENTITIES",
+    "QuirkRegistryEntry",
     "ZHAGatewayProxy",
-    "async_custom_quirks_path",
     "async_gateway",
-    "zha_quirks_provide_quirk",
+    "load_quirk",
+    "put_first",
 ]
 
 
@@ -38,69 +43,35 @@ def async_gateway(hass: HomeAssistant) -> ZHAGatewayProxy | None:
         return None
 
 
-@callback
-def async_custom_quirks_path(hass: HomeAssistant) -> Path | None:
-    """Return ZHA's YAML ``custom_quirks_path`` as an absolute path, or None if unset.
+def load_quirk() -> QuirkRegistryEntry:
+    """Import the quirk after zha-quirks' own quirks; return its registry entry.
 
-    ZHA keeps its YAML in ``hass.data`` for the whole run and hands this value to the
-    quirk loader at each setup of its entry; a ZHA reload does not re-read it. ZHA
-    resolves a relative value against the working directory, not the config folder:
-    ``cv.isdir`` checks it with ``os.path.isdir`` after ``expanduser`` (and stores the
-    expanded value), ``zhaquirks.setup`` walks ``pathlib.Path(value)``, and Python's
-    path finder records every module's file as ``os.path.abspath`` of it. Resolve it the
-    same way, so the folder written to and the quirks' source files compare alike.
+    Blocking: it imports every zha-quirks module. The entry is left first in ZHA's
+    registry.
     """
-    value = get_zha_data(hass).yaml_config.get(CONF_CUSTOM_QUIRKS_PATH)
-    if value is None:
-        return None
-    return Path(os.path.abspath(os.path.expanduser(value)))
-
-
-def zha_quirks_provide_quirk(custom_quirks_path: Path | None) -> bool:
-    """Return whether the quirk is in ZHA's quirk registry from outside ``custom_quirks_path``.
-
-    That is an entry for exactly the WM25/L-Z, with no filter and no firmware bounds,
-    not loaded from ``custom_quirks_path``, whose definition exposes the quirk ID. The
-    device cannot tell, since the file in ``custom_quirks_path`` wins; the registry can.
-    """
-    return any(
-        (SHADE_MANUFACTURER, SHADE_MODEL) in entry.device_match.applies_to
-        and _unrestricted(entry.device_match)
-        and not _from_custom_quirks_path(entry, custom_quirks_path)
-        and _declares_quirk_id(entry)
-        for entry in zha.quirks.DEVICE_REGISTRY
+    # Drain zha-quirks' v1 quirks now, so a later drain cannot put the vendor quirk in
+    # front of this one. ZHA runs the same call when it sets up; it is idempotent.
+    zhaquirks.setup()
+    entry: QuirkRegistryEntry = importlib.import_module(
+        f"{__package__}.quirk"
+    ).QUIRK_ENTRY
+    # Registered without a source file, so ZHA's purge of custom_quirks_path never
+    # removes it, even when that folder holds custom_components. ZHA reads only the
+    # source's module and label. It replaces the equal entry the import registered.
+    pinned = dataclasses.replace(
+        entry, source=dataclasses.replace(entry.source, file=None)
     )
+    put_first(pinned)
+    return pinned
 
 
-def _unrestricted(device_match: zha.quirks.DeviceMatch) -> bool:
-    """Return whether ZHA applies a match to every unit of its model."""
-    return (
-        not device_match.filters
-        and device_match.firmware_version_min is None
-        and device_match.firmware_version_max is None
-    )
+def put_first(entry: QuirkRegistryEntry) -> None:
+    """Make ``entry`` the first one ZHA's resolver tries for its model."""
+    remove(entry)
+    DEVICE_REGISTRY.register(entry)
 
 
-def _from_custom_quirks_path(
-    entry: zha.quirks.QuirkRegistryEntry, custom_quirks_path: Path | None
-) -> bool:
-    """Return whether ZHA loaded ``entry`` from ``custom_quirks_path``."""
-    if custom_quirks_path is None or entry.source is None or entry.source.file is None:
-        return False
-    # Both sides absolute, as the path finder records source files.
-    return Path(os.path.abspath(entry.source.file)).is_relative_to(
-        os.path.abspath(custom_quirks_path)
-    )
-
-
-def _declares_quirk_id(entry: zha.quirks.QuirkRegistryEntry) -> bool:
-    """Return whether a registry entry's quirk definition exposes the quirk ID.
-
-    A quirks v2 entry carries its definition on its ZHA device factory
-    (``QuirkV2Factory.quirk_definition``); anything else has none and answers False.
-    """
-    definition = getattr(entry.zha_device_factory, "quirk_definition", None)
-    return any(
-        getattr(feature, "feature", None) == QUIRK_ID
-        for feature in getattr(definition, "exposes_features", ())
-    )
+def remove(entry: QuirkRegistryEntry) -> None:
+    """Take ``entry`` out of ZHA's quirk registry, if it is there."""
+    with contextlib.suppress(ValueError):
+        DEVICE_REGISTRY.remove(entry)

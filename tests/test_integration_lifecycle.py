@@ -6,7 +6,14 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import DATA_DISPATCHER, async_dispatcher_send
 
 from custom_components.smartwings.zha_gateway import SIGNAL_ADD_ENTITIES
-from tests.smartwings_helpers import ENTRY_ID, directory, domain_issues, install, issue
+from tests.smartwings_helpers import (
+    ENTRY_ID,
+    directory,
+    domain_issues,
+    install,
+    issue,
+    zha_reloads,
+)
 from tests.zha_harness import SHADE_IEEE, ZhaHarness
 from tests.zha_harness.harness import ZHA_ENTRY_ID
 
@@ -25,10 +32,10 @@ def listener_counts(harness: ZhaHarness) -> tuple[int, int, int]:
 
 
 async def test_after_unload_zha_signals_trigger_nothing(
-    zha_harness_without_quirks_path: ZhaHarness,
+    zha_harness_shadowed: ZhaHarness,
 ) -> None:
     """Unloaded: listeners gone, no discovery, ZHA's cover untouched."""
-    zha_harness = zha_harness_without_quirks_path
+    zha_harness = zha_harness_shadowed
     hass = zha_harness.hass
     before = listener_counts(zha_harness)
     shades = await install(zha_harness)
@@ -53,10 +60,11 @@ async def test_after_unload_zha_signals_trigger_nothing(
 async def test_reloading_the_entry_leaves_one_set_of_listeners(
     zha_harness: ZhaHarness,
 ) -> None:
-    """Reloaded: rebuilt from ZHA, with no duplicate listener or Repairs issue."""
+    """Reloaded: rebuilt from ZHA, with no duplicate listener, Repairs issue or reload."""
     hass = zha_harness.hass
     await install(zha_harness)
     installed = listener_counts(zha_harness)
+    reloads = zha_reloads(zha_harness)
 
     assert await hass.config_entries.async_reload(ENTRY_ID)
     await hass.async_block_till_done()
@@ -64,7 +72,6 @@ async def test_reloading_the_entry_leaves_one_set_of_listeners(
     entry = hass.config_entries.async_get_entry(ENTRY_ID)
     assert entry.state is ConfigEntryState.LOADED
     assert listener_counts(zha_harness) == installed
-    assert directory(zha_harness).shades[SHADE].quirk_active is False
-    # The quirk the setup installed still waits for ZHA to load it, and the restart
-    # request stands in for the missing-quirk issue.
-    assert domain_issues(zha_harness) == ["restart_required"]
+    assert directory(zha_harness).shades[SHADE].quirk_active is True
+    assert zha_reloads(zha_harness) == reloads
+    assert domain_issues(zha_harness) == []

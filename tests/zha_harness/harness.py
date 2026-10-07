@@ -5,6 +5,9 @@ its quirk through its own startup path, including ``custom_quirks_path``. The ha
 its Home Assistant instances (the plugin's ``hass`` fixture cannot be restarted with its
 registries intact): ``hass_storage`` holds registries and restore state across a restart,
 and the motor, the database file and the clock live on the harness.
+
+Each start is a new process for custom integrations: their modules are imported afresh,
+and the quirks they registered are gone, so importing one registers its quirk again.
 """
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 import contextlib
-import importlib.util
 from pathlib import Path
 import sys
 from typing import Any
@@ -23,8 +25,9 @@ from homeassistant import loader
 from homeassistant.bootstrap import DATA_REGISTRIES_LOADED
 from homeassistant.components.zha import const as zha_const
 from homeassistant.components.zha.helpers import get_zha_gateway
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import Platform
-from homeassistant.core import DOMAIN as HA_DOMAIN, HomeAssistant
+from homeassistant.core import DOMAIN as HA_DOMAIN, HomeAssistant, callback
 from homeassistant.helpers import (
     area_registry as ar,
     category_registry as cr,
@@ -68,12 +71,8 @@ class ZhaHarness:
         # Whether ZHA's YAML sets custom_quirks_path; read at every start, as Home
         # Assistant reads configuration.yaml.
         self.custom_quirks_path_configured = True
-        # The value written for it, when not this folder's absolute path (a relative
-        # path, as a user may write it, resolves against the working directory).
-        self.custom_quirks_path_setting: str | None = None
-        # A folder outside custom_quirks_path, standing in for zha-quirks' package.
-        self.upstream_path = tmp_path / "upstream_zhaquirks"
-        self._upstream_modules: list[str] = []
+        # ZHA's enable_quirks, likewise.
+        self.quirks_enabled = True
         self.hass_storage = hass_storage
         self.motor = motor
         self.frames: list[Frame] = []
@@ -82,14 +81,17 @@ class ZhaHarness:
         self._hass_context: contextlib.AbstractAsyncContextManager | None = None
         self._exceptions: list[BaseException] = []
         self._patches = contextlib.ExitStack()
-        # Config entries of other integrations, set up after ZHA at every start.
+        # Config entries of other integrations, set up at every start.
         self.installed: dict[str, str] = {}
+        # How many times ZHA's entry was set up since Home Assistant last started: one
+        # for the start, one more for each reload.
+        self.zha_starts = 0
 
     @property
     def zha_config(self) -> dict[str, Any]:
         """YAML for ZHA: quirks on, our quirk path, background radio work off."""
         config: dict[str, Any] = {
-            zha_const.CONF_ENABLE_QUIRKS: True,
+            zha_const.CONF_ENABLE_QUIRKS: self.quirks_enabled,
             zha_const.CONF_ZIGPY: {
                 zigpy.config.CONF_WATCHDOG_ENABLED: False,
                 zigpy.config.CONF_NWK_BACKUP_ENABLED: False,
@@ -99,27 +101,8 @@ class ZhaHarness:
             },
         }
         if self.custom_quirks_path_configured:
-            config[zha_const.CONF_CUSTOM_QUIRKS_PATH] = (
-                self.custom_quirks_path_setting or str(self.custom_quirks_path)
-            )
+            config[zha_const.CONF_CUSTOM_QUIRKS_PATH] = str(self.custom_quirks_path)
         return config
-
-    def ship_upstream(self, source: str) -> None:
-        """Register ``source`` as if the zha-quirks package Home Assistant pins shipped it.
-
-        It is loaded from a folder outside custom_quirks_path, so ZHA keeps it across
-        restarts and reloads (it purges only custom quirks), until the harness closes.
-        """
-        self.upstream_path.mkdir(exist_ok=True)
-        name = f"upstream_wm25lz_{len(self._upstream_modules)}"
-        path = self.upstream_path / f"{name}.py"
-        path.write_text(source)
-        spec = importlib.util.spec_from_file_location(name, path)
-        assert spec is not None and spec.loader is not None
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[name] = module
-        self._upstream_modules.append(name)
-        spec.loader.exec_module(module)
 
     async def open(self, *, initial_lift: int) -> None:
         """Seed the database, take over the clock and the radio, and boot."""
@@ -133,6 +116,7 @@ class ZhaHarness:
                 self.motor = harness.motor
 
         self._patches.enter_context(zha.quirks.DEVICE_REGISTRY.preserve_state())
+        _forget_custom_integrations()
         self._patches.enter_context(
             patch.object(
                 bellows.zigbee.application.ControllerApplication, "new", _App.new
@@ -164,18 +148,17 @@ class ZhaHarness:
             )
             for path in self.custom_quirks_path.glob("*.py"):
                 sys.modules.pop(path.stem, None)
-            for name in self._upstream_modules:
-                sys.modules.pop(name, None)
-            # Python caches a path finder per path string; a relative one resolved
-            # against this test's working directory must not serve the next test.
-            if self.custom_quirks_path_setting is not None:
-                sys.path_importer_cache.pop(self.custom_quirks_path_setting, None)
             self._patches.close()
         if self._exceptions:
             raise self._exceptions[0]
 
-    async def start(self) -> None:
-        """Boot Home Assistant over the persisted state and set up ZHA."""
+    async def start(self, *, zha_first: bool = False) -> None:
+        """Boot Home Assistant over the persisted state and set up ZHA.
+
+        The installed integrations are set up before ZHA, as Home Assistant's bootstrap
+        usually does for one that does not depend on ZHA; ``zha_first`` reverses that.
+        """
+        self.zha_starts = 0
         self._hass_context = async_test_home_assistant(
             config_dir=str(self.config_dir), load_registries=False
         )
@@ -203,7 +186,7 @@ class ZhaHarness:
         # Let the loader find custom_components/smartwings (enable_custom_integrations).
         hass.data.pop(loader.DATA_CUSTOM_COMPONENTS, None)
 
-        MockConfigEntry(
+        zha_entry = MockConfigEntry(
             domain=zha_const.DOMAIN,
             entry_id=ZHA_ENTRY_ID,
             version=5,
@@ -216,27 +199,37 @@ class ZhaHarness:
                 },
                 zha_const.CONF_RADIO_TYPE: "ezsp",
             },
-        ).add_to_hass(hass)
+        )
+        zha_entry.add_to_hass(hass)
+
+        @callback
+        def count_zha_setups() -> None:
+            if zha_entry.state is ConfigEntryState.SETUP_IN_PROGRESS:
+                self.zha_starts += 1
+
+        zha_entry.async_on_state_change(count_zha_setups)
         # Startup and shutdown wait on threads (sqlite, executor), not on timers, so
         # they run in real time; virtual jumps are for commands and explicit advances.
         async with asyncio.timeout(_LIFECYCLE_TIMEOUT_S):
             assert await async_setup_component(hass, HA_DOMAIN, {})
+            if not zha_first:
+                await self._set_up_installed()
             assert await async_setup_component(
                 hass, zha_const.DOMAIN, {zha_const.DOMAIN: self.zha_config}
             )
             await hass.async_block_till_done()
-            for domain, entry_id in self.installed.items():
-                await self._set_up(domain, entry_id)
+            if zha_first:
+                await self._set_up_installed()
 
     async def install(self, domain: str, entry_id: str) -> None:
-        """Add a config entry for ``domain`` now and at every later start, after ZHA.
-
-        That is the order Home Assistant's bootstrap gives an integration that depends
-        on ZHA.
-        """
+        """Add a config entry for ``domain`` now, with ZHA running, and at every start."""
         assert self.hass is not None
         self.installed[domain] = entry_id
         async with asyncio.timeout(_LIFECYCLE_TIMEOUT_S):
+            await self._set_up(domain, entry_id)
+
+    async def _set_up_installed(self) -> None:
+        for domain, entry_id in self.installed.items():
             await self._set_up(domain, entry_id)
 
     async def _set_up(self, domain: str, entry_id: str) -> None:
@@ -244,7 +237,10 @@ class ZhaHarness:
         MockConfigEntry(domain=domain, entry_id=entry_id, title=domain).add_to_hass(
             self.hass
         )
-        assert await async_setup_component(self.hass, domain, {})
+        # Home Assistant hands every integration the whole configuration.
+        assert await async_setup_component(
+            self.hass, domain, {zha_const.DOMAIN: self.zha_config}
+        )
         await self.hass.async_block_till_done()
 
     async def stop(self) -> None:
@@ -255,11 +251,12 @@ class ZhaHarness:
         await self._hass_context.__aexit__(None, None, None)
         self.hass = None
         self._hass_context = None
+        _forget_custom_integrations()
 
-    async def restart(self) -> None:
+    async def restart(self, *, zha_first: bool = False) -> None:
         """Stop and start Home Assistant; the database, storage and motor carry over."""
         await self.stop()
-        await self.start()
+        await self.start(zha_first=zha_first)
 
     async def reload_zha(self) -> None:
         """Reload ZHA's config entry, as the UI's reload does; the gateway restarts."""
@@ -311,6 +308,17 @@ class ZhaHarness:
     def shade_frames(self) -> list[Frame]:
         """Frames sent to the shade on the WindowCovering cluster, in order, dropped included."""
         return [f for f in self.frames if f.cluster_id == 0x0102]
+
+
+def _forget_custom_integrations() -> None:
+    """Forget the custom integrations' modules and their quirks, as a new process would."""
+    for entry in list(zha.quirks.DEVICE_REGISTRY):
+        if entry.source is not None and entry.source.module.startswith(
+            "custom_components."
+        ):
+            zha.quirks.DEVICE_REGISTRY.remove(entry)
+    for name in [name for name in sys.modules if name.startswith("custom_components.")]:
+        del sys.modules[name]
 
 
 @contextlib.asynccontextmanager

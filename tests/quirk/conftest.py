@@ -1,7 +1,7 @@
 """Fixtures for the SmartWings quirk's own tests: zigpy's real request path, no Home Assistant.
 
-The quirk file is loaded by path (``quirk/`` is never on the import path) inside a snapshot
-of ZHA's quirk registry, so its registration lasts for one test only. Shades come from a
+The quirk file is loaded by path, as a module of its own (not the integration's), inside a
+snapshot of ZHA's quirk registry, so its registration lasts for one test only. Shades come from a
 seeded zigpy database and are resolved through ZHA's registry, so each test gets the
 quirk's real WindowCovering cluster on a real zigpy device. Every frame is captured at the
 radio and decoded; a simulated motor answers, and the loop runs in virtual time.
@@ -34,9 +34,7 @@ from tests.zha_harness import (
     seed_database,
 )
 
-QUIRK_FILE = (
-    Path(__file__).parents[2] / "quirk" / "zhaquirks" / "smartwings" / "wm25lz.py"
-)
+QUIRK_FILE = Path(__file__).parents[2] / "custom_components" / "smartwings" / "quirk.py"
 QUIRK_MODULE = "smartwings_wm25lz_under_test"
 
 # A second shade, for tests of independence between shades.
