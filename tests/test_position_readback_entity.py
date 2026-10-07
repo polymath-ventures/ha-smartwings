@@ -21,7 +21,7 @@ from tests.zha_harness import ZhaHarness, open_zha_harness
 COMMANDS = WindowCovering.ServerCommandDefs
 # A full travel in 60 s, inside the measured 30-70 s.
 FULL_TRAVEL_60_S = 100 / 60
-# Longer than any tracking: arrival plus confirmation, within TRACK_MAX_DURATION.
+# Longer than any follow-up of a 60 s travel: the arrival estimate and its read.
 AFTER_TRACKING_S = 120
 
 
@@ -29,7 +29,7 @@ AFTER_TRACKING_S = 120
 async def harness(tmp_path, hass_storage) -> AsyncIterator[ZhaHarness]:
     """Boot with the quirk installed and the shade fully open (HA position 100).
 
-    The shade is read once after startup, so delivery has a baseline.
+    The shade is read once after startup, so its lift is cached.
     """
     async with open_zha_harness(tmp_path, hass_storage, initial_lift=0) as booted:
         await install_quirk(booted)
@@ -226,9 +226,9 @@ async def test_a_restart_during_tracking_leaves_nothing_behind(harness) -> None:
 async def test_a_zha_reload_during_tracking_ends_it(harness) -> None:
     """A ZHA reload mid-tracking ends the old tracker; the new cluster works.
 
-    The tracker that would have read the end is gone, so the cache still holds the
-    early look, lift 10 or so, while the shade closes to 100. That look is no baseline
-    for the next command, which succeeds without a refresh first.
+    The follow-up that would have shown the end is gone, so the cache still holds the
+    lift from before the close while the shade closes to 100. The next command still
+    succeeds without a refresh first.
     """
     await cover(harness, "close_cover")
     await harness.clock.advance(10)
@@ -265,4 +265,24 @@ async def test_a_zha_reload_during_delivery_starts_no_tracking(harness) -> None:
         task
         for task in asyncio.all_tasks()
         if "position readback" in task.get_name() and not task.done()
+    ]
+
+
+async def test_a_zha_reload_during_a_resend_pause_sends_nothing_more(harness) -> None:
+    """The first frame is lost and ZHA reloads in the pause: no second frame."""
+    harness.motor.drop_next(1)
+    close = asyncio.ensure_future(
+        harness.hass.services.async_call(
+            "cover", "close_cover", {"entity_id": harness.cover_entity_id}, True
+        )
+    )
+    await harness.clock.advance(6)
+
+    await harness.reload_zha()
+    with contextlib.suppress(HomeAssistantError):
+        await harness.run(close)
+    await harness.clock.advance(AFTER_TRACKING_S)
+
+    assert [f.command_id for f in harness.shade_frames() if not f.general] == [
+        COMMANDS.down_close.id
     ]

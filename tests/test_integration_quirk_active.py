@@ -42,7 +42,6 @@ async def test_the_id_decides_whatever_the_names(zha_harness) -> None:
     source = QUIRK_SOURCE.read_text()
     for old, new in [
         ("WM25LZWindowCovering", "RenamedCovering"),
-        ("WireCommand", "RenamedWireCommand"),
     ]:
         source = replaced(source, old, new)
     (zha_harness.custom_quirks_path / "renamed_module.py").write_text(source)
