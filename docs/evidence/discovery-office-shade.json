@@ -1,0 +1,2933 @@
+{
+  "issue": 36,
+  "ieee": "60:83:da:ff:fe:a0:00:02",
+  "nwk": "0x308C",
+  "endpoint": 1,
+  "manufacturer_code": "0x1002",
+  "frame_timeout_s": 5.0,
+  "started": "2026-10-06T12:35:27.462666+00:00",
+  "finished": "2026-10-06T12:36:30.405792+00:00",
+  "summary": {
+    "frames_sent": 61,
+    "replies": 61,
+    "frames_without_reply": 0,
+    "reads_sent": 1,
+    "reads_skipped_cached": 31,
+    "unmatched_frames": 2,
+    "stopped_early": null,
+    "found_per_cluster": {
+      "0x0000 server": {
+        "attributes no_manufacturer": "5",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "0",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0001 server": {
+        "attributes no_manufacturer": "3",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "0",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0003 server": {
+        "attributes no_manufacturer": "2",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "1",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0004 server": {
+        "attributes no_manufacturer": "2",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "4",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0005 server": {
+        "attributes no_manufacturer": "6",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "6",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0102 server": {
+        "attributes no_manufacturer": "9",
+        "commands_received no_manufacturer": "7",
+        "commands_generated no_manufacturer": "0",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0003 client": {
+        "attributes no_manufacturer": "1",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "2",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0x0019 client": {
+        "attributes no_manufacturer": "4",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "3",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0xFC01 server": {
+        "attributes no_manufacturer": "0",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "0",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      },
+      "0xEF00 server": {
+        "attributes no_manufacturer": "0",
+        "commands_received no_manufacturer": "0",
+        "commands_generated no_manufacturer": "0",
+        "attributes manufacturer_0x1002": "0",
+        "commands_received manufacturer_0x1002": "0",
+        "commands_generated manufacturer_0x1002": "0"
+      }
+    },
+    "output": "/config/zha_discovery_office_shade.json"
+  },
+  "clusters": [
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "Basic",
+      "cache_before": {
+        "values": {
+          "0x0004/None": "Smartwings",
+          "0x0005/None": "WM25/L-Z",
+          "0x0000/None": 8,
+          "0x0007/None": 0,
+          "0xFFFD/None": 3
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0004",
+                "datatype": "0x42",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0005",
+                "datatype": "0x42",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0007",
+                "datatype": "0x30",
+                "acl": "0x05"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0001",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "DoublingPowerConfigurationCluster",
+      "cache_before": {
+        "values": {
+          "0x0020/None": 0,
+          "0x0021/None": 168,
+          "0xFFFD/None": 2
+        },
+        "unsupported": [
+          "0x0031/None",
+          "0x0033/None"
+        ],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0020",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0021",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0003",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "Identify",
+      "cache_before": {
+        "values": {
+          "0x0000/None": 0,
+          "0xFFFD/None": 2
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0x21",
+                "acl": "0x07"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x00"
+            ]
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0004",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "Groups",
+      "cache_before": {
+        "values": {
+          "0x0000/None": 0,
+          "0xFFFD/None": 3
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0x18",
+                "acl": "0x05"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x00",
+              "0x01",
+              "0x02",
+              "0x03"
+            ]
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "Scenes",
+      "cache_before": {
+        "values": {
+          "0x0000/None": 0,
+          "0x0001/None": 0,
+          "0x0002/None": 0,
+          "0x0003/None": 0,
+          "0x0004/None": 0,
+          "0xFFFD/None": 3
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0001",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0002",
+                "datatype": "0x21",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0003",
+                "datatype": "0x10",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0004",
+                "datatype": "0x18",
+                "acl": "0x05"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x00",
+              "0x01",
+              "0x02",
+              "0x03",
+              "0x04",
+              "0x06"
+            ]
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "on_endpoint": true,
+      "zigpy_class": "ReadbackWindowCoveringCluster",
+      "cache_before": {
+        "values": {
+          "0x0000/None": 0,
+          "0x0007/None": 3,
+          "0x0017/None": 20,
+          "0x0008/None": 84,
+          "0x0010/None": 0,
+          "0x0011/None": 65535,
+          "0x0012/None": 0,
+          "0x0013/None": 65535
+        },
+        "unsupported": [
+          "0x0009/None"
+        ],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0x30",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0007",
+                "datatype": "0x18",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0008",
+                "datatype": "0x20",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0010",
+                "datatype": "0x21",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0011",
+                "datatype": "0x21",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0012",
+                "datatype": "0x21",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0013",
+                "datatype": "0x21",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0017",
+                "datatype": "0x18",
+                "acl": "0x07"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x00",
+              "0x01",
+              "0x02",
+              "0x04",
+              "0x05",
+              "0x07",
+              "0x08"
+            ]
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0003",
+      "side": "client",
+      "on_endpoint": true,
+      "zigpy_class": "Identify",
+      "cache_before": {
+        "values": {
+          "0xFFFD/None": 2
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x00",
+              "0x01"
+            ]
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0x0019",
+      "side": "client",
+      "on_endpoint": true,
+      "zigpy_class": "Ota",
+      "cache_before": {
+        "values": {
+          "0x0002/None": 2,
+          "0x0000/None": "f0:82:c0:ff:fe:a0:00:0d",
+          "0x0001/None": 4294967295,
+          "0x0006/None": 0,
+          "0xFFFD/None": 4
+        },
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              {
+                "id": "0x0000",
+                "datatype": "0xF0",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0001",
+                "datatype": "0x23",
+                "acl": "0x05"
+              },
+              {
+                "id": "0x0006",
+                "datatype": "0x30",
+                "acl": "0x05"
+              },
+              {
+                "id": "0xFFFD",
+                "datatype": "0x21",
+                "acl": "0x05"
+              }
+            ]
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": [
+              "0x01",
+              "0x03",
+              "0x06"
+            ]
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0xFC01",
+      "side": "server",
+      "on_endpoint": false,
+      "zigpy_class": "Cluster",
+      "cache_before": {
+        "values": {},
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    },
+    {
+      "cluster": "0xEF00",
+      "side": "server",
+      "on_endpoint": false,
+      "zigpy_class": "Cluster",
+      "cache_before": {
+        "values": {},
+        "unsupported": [],
+        "legacy": {}
+      },
+      "discovery": {
+        "no_manufacturer": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        },
+        "manufacturer_0x1002": {
+          "attributes": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_received": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          },
+          "commands_generated": {
+            "outcome": "complete",
+            "pages": 1,
+            "found": []
+          }
+        }
+      }
+    }
+  ],
+  "reads": [
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "attribute": "0x0004",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "attribute": "0x0005",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "attribute": "0x0007",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0000",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0001",
+      "side": "server",
+      "attribute": "0x0020",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0001",
+      "side": "server",
+      "attribute": "0x0021",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0001",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0003",
+      "side": "server",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0003",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0004",
+      "side": "server",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0004",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0x0001",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0x0002",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0x0003",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0x0004",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0005",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0007",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0008",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0010",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0011",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0012",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0013",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0x0017",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0102",
+      "side": "server",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "reply": {
+        "raw": "08 3f 01 fd ff 00 21 03 00",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x01",
+        "command": "Read_Attributes_rsp",
+        "records": [
+          {
+            "id": "0xFFFD",
+            "status": "SUCCESS",
+            "status_code": "0x00",
+            "datatype": "0x21",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "cluster": "0x0003",
+      "side": "client",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0019",
+      "side": "client",
+      "attribute": "0x0000",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0019",
+      "side": "client",
+      "attribute": "0x0001",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0019",
+      "side": "client",
+      "attribute": "0x0006",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    },
+    {
+      "cluster": "0x0019",
+      "side": "client",
+      "attribute": "0xFFFD",
+      "manufacturer": null,
+      "skipped": "already in zigpy's attribute cache"
+    }
+  ],
+  "frames": [
+    {
+      "n": 1,
+      "time": "2026-10-06T12:35:27.464224+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 3,
+      "attempt": 1,
+      "zcl_sent": "00 03 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 03 16 01 00 00 20 05 04 00 42 05 05 00 42 05 07 00 30 05 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0004",
+            "datatype": "0x42",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0005",
+            "datatype": "0x42",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0007",
+            "datatype": "0x30",
+            "acl": "0x05"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 0.208
+    },
+    {
+      "n": 2,
+      "time": "2026-10-06T12:35:27.676203+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 4,
+      "attempt": 1,
+      "zcl_sent": "00 04 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 04 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.988
+    },
+    {
+      "n": 3,
+      "time": "2026-10-06T12:35:28.667669+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 5,
+      "attempt": 1,
+      "zcl_sent": "00 05 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 05 14 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.0
+    },
+    {
+      "n": 4,
+      "time": "2026-10-06T12:35:29.671334+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 6,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 06 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 06 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 1.03
+    },
+    {
+      "n": 5,
+      "time": "2026-10-06T12:35:30.705643+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 7,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 07 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 07 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.952
+    },
+    {
+      "n": 6,
+      "time": "2026-10-06T12:35:31.661470+00:00",
+      "cluster": "0x0000",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 8,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 08 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 08 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.001
+    },
+    {
+      "n": 7,
+      "time": "2026-10-06T12:35:32.667473+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 9,
+      "attempt": 1,
+      "zcl_sent": "00 09 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 09 16 01 20 00 20 05 21 00 20 05 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0020",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0021",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 0.978
+    },
+    {
+      "n": 8,
+      "time": "2026-10-06T12:35:33.649189+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 10,
+      "attempt": 1,
+      "zcl_sent": "00 0a 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 0a 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.987
+    },
+    {
+      "n": 9,
+      "time": "2026-10-06T12:35:34.640251+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 11,
+      "attempt": 1,
+      "zcl_sent": "00 0b 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 0b 14 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.017
+    },
+    {
+      "n": 10,
+      "time": "2026-10-06T12:35:35.668593+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 12,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 0c 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 0c 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 1.006
+    },
+    {
+      "n": 11,
+      "time": "2026-10-06T12:35:36.679224+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 13,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 0d 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 0d 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.952
+    },
+    {
+      "n": 12,
+      "time": "2026-10-06T12:35:37.635738+00:00",
+      "cluster": "0x0001",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 14,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 0e 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 0e 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.985
+    },
+    {
+      "n": 13,
+      "time": "2026-10-06T12:35:38.624940+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 15,
+      "attempt": 1,
+      "zcl_sent": "00 0f 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 0f 16 01 00 00 21 07 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0x21",
+            "acl": "0x07"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 0.991
+    },
+    {
+      "n": 14,
+      "time": "2026-10-06T12:35:39.620276+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 16,
+      "attempt": 1,
+      "zcl_sent": "00 10 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 10 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.992
+    },
+    {
+      "n": 15,
+      "time": "2026-10-06T12:35:40.616546+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 17,
+      "attempt": 1,
+      "zcl_sent": "00 11 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 11 14 01 00",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x00"
+        ]
+      },
+      "elapsed_s": 1.018
+    },
+    {
+      "n": 16,
+      "time": "2026-10-06T12:35:41.639305+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 18,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 12 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 12 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.994
+    },
+    {
+      "n": 17,
+      "time": "2026-10-06T12:35:42.638014+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 19,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 13 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 13 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.986
+    },
+    {
+      "n": 18,
+      "time": "2026-10-06T12:35:43.630061+00:00",
+      "cluster": "0x0003",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 20,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 14 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 14 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.94
+    },
+    {
+      "n": 19,
+      "time": "2026-10-06T12:35:45.575461+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 21,
+      "attempt": 1,
+      "zcl_sent": "00 15 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 15 16 01 00 00 18 05 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0x18",
+            "acl": "0x05"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 1.012
+    },
+    {
+      "n": 20,
+      "time": "2026-10-06T12:35:46.592831+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 22,
+      "attempt": 1,
+      "zcl_sent": "00 16 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 16 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.983
+    },
+    {
+      "n": 21,
+      "time": "2026-10-06T12:35:47.581279+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 23,
+      "attempt": 1,
+      "zcl_sent": "00 17 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 17 14 01 00 01 02 03",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x00",
+          "0x01",
+          "0x02",
+          "0x03"
+        ]
+      },
+      "elapsed_s": 0.995
+    },
+    {
+      "n": 22,
+      "time": "2026-10-06T12:35:48.580874+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 24,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 18 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 18 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.985
+    },
+    {
+      "n": 23,
+      "time": "2026-10-06T12:35:49.571581+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 25,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 19 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 19 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.992
+    },
+    {
+      "n": 24,
+      "time": "2026-10-06T12:35:50.568496+00:00",
+      "cluster": "0x0004",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 26,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 1a 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 1a 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.989
+    },
+    {
+      "n": 25,
+      "time": "2026-10-06T12:35:51.562845+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 27,
+      "attempt": 1,
+      "zcl_sent": "00 1b 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 1b 16 01 00 00 20 05 01 00 20 05 02 00 21 05 03 00 10 05 04 00 18 05 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0001",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0002",
+            "datatype": "0x21",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0003",
+            "datatype": "0x10",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0004",
+            "datatype": "0x18",
+            "acl": "0x05"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 0.994
+    },
+    {
+      "n": 26,
+      "time": "2026-10-06T12:35:52.561704+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 28,
+      "attempt": 1,
+      "zcl_sent": "00 1c 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 1c 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.987
+    },
+    {
+      "n": 27,
+      "time": "2026-10-06T12:35:53.553947+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 29,
+      "attempt": 1,
+      "zcl_sent": "00 1d 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 1d 14 01 00 01 02 03 04 06",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x00",
+          "0x01",
+          "0x02",
+          "0x03",
+          "0x04",
+          "0x06"
+        ]
+      },
+      "elapsed_s": 0.987
+    },
+    {
+      "n": 28,
+      "time": "2026-10-06T12:35:54.546484+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 30,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 1e 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 1e 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.994
+    },
+    {
+      "n": 29,
+      "time": "2026-10-06T12:35:55.545255+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 31,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 1f 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 1f 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.991
+    },
+    {
+      "n": 30,
+      "time": "2026-10-06T12:35:56.541525+00:00",
+      "cluster": "0x0005",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 32,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 20 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 20 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.985
+    },
+    {
+      "n": 31,
+      "time": "2026-10-06T12:35:57.531484+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 33,
+      "attempt": 1,
+      "zcl_sent": "00 21 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 21 16 01 00 00 30 05 07 00 18 05 08 00 20 05 10 00 21 05 11 00 21 05 12 00 21 05 13 00 21 05 17 00 18 07 fd ff 21 05",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0x30",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0007",
+            "datatype": "0x18",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0008",
+            "datatype": "0x20",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0010",
+            "datatype": "0x21",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0011",
+            "datatype": "0x21",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0012",
+            "datatype": "0x21",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0013",
+            "datatype": "0x21",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0017",
+            "datatype": "0x18",
+            "acl": "0x07"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 1.018
+    },
+    {
+      "n": 32,
+      "time": "2026-10-06T12:35:58.554057+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 34,
+      "attempt": 1,
+      "zcl_sent": "00 22 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 22 12 01 00 01 02 04 05 07 08",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x00",
+          "0x01",
+          "0x02",
+          "0x04",
+          "0x05",
+          "0x07",
+          "0x08"
+        ]
+      },
+      "elapsed_s": 0.97
+    },
+    {
+      "n": 33,
+      "time": "2026-10-06T12:35:59.529245+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 35,
+      "attempt": 1,
+      "zcl_sent": "00 23 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 23 14 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.98
+    },
+    {
+      "n": 34,
+      "time": "2026-10-06T12:36:00.514659+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 36,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 24 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 24 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.998
+    },
+    {
+      "n": 35,
+      "time": "2026-10-06T12:36:01.518753+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 37,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 25 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 25 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.98
+    },
+    {
+      "n": 36,
+      "time": "2026-10-06T12:36:02.505205+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 38,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 26 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 26 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.996
+    },
+    {
+      "n": 37,
+      "time": "2026-10-06T12:36:03.507177+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 39,
+      "attempt": 1,
+      "zcl_sent": "18 27 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 27 16 01 fd ff 21 05",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 1.021
+    },
+    {
+      "n": 38,
+      "time": "2026-10-06T12:36:04.534244+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 40,
+      "attempt": 1,
+      "zcl_sent": "18 28 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 28 12 01",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.965
+    },
+    {
+      "n": 39,
+      "time": "2026-10-06T12:36:05.504941+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 41,
+      "attempt": 1,
+      "zcl_sent": "18 29 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 29 14 01 00 01",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x00",
+          "0x01"
+        ]
+      },
+      "elapsed_s": 0.983
+    },
+    {
+      "n": 40,
+      "time": "2026-10-06T12:36:06.493718+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 42,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 2a 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 2a 16 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.994
+    },
+    {
+      "n": 41,
+      "time": "2026-10-06T12:36:07.493567+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 43,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 2b 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 2b 12 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.986
+    },
+    {
+      "n": 42,
+      "time": "2026-10-06T12:36:08.485922+00:00",
+      "cluster": "0x0003",
+      "side": "client",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 44,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 2c 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 2c 14 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 3.733
+    },
+    {
+      "n": 43,
+      "time": "2026-10-06T12:36:12.226592+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 45,
+      "attempt": 1,
+      "zcl_sent": "18 2d 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 2d 16 01 00 00 f0 05 01 00 23 05 06 00 30 05 fd ff 21 05",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": [
+          {
+            "id": "0x0000",
+            "datatype": "0xF0",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0001",
+            "datatype": "0x23",
+            "acl": "0x05"
+          },
+          {
+            "id": "0x0006",
+            "datatype": "0x30",
+            "acl": "0x05"
+          },
+          {
+            "id": "0xFFFD",
+            "datatype": "0x21",
+            "acl": "0x05"
+          }
+        ]
+      },
+      "elapsed_s": 0.234
+    },
+    {
+      "n": 44,
+      "time": "2026-10-06T12:36:12.466585+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 46,
+      "attempt": 1,
+      "zcl_sent": "18 2e 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 2e 12 01",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.983
+    },
+    {
+      "n": 45,
+      "time": "2026-10-06T12:36:13.456145+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 47,
+      "attempt": 1,
+      "zcl_sent": "18 2f 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "00 2f 14 01 01 03 06",
+        "frame_control": "0x00",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": [
+          "0x01",
+          "0x03",
+          "0x06"
+        ]
+      },
+      "elapsed_s": 0.994
+    },
+    {
+      "n": 46,
+      "time": "2026-10-06T12:36:14.456666+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 48,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 30 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 30 16 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.99
+    },
+    {
+      "n": 47,
+      "time": "2026-10-06T12:36:15.453002+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 49,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 31 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 31 12 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.984
+    },
+    {
+      "n": 48,
+      "time": "2026-10-06T12:36:16.443052+00:00",
+      "cluster": "0x0019",
+      "side": "client",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 50,
+      "attempt": 1,
+      "zcl_sent": "1c 02 10 32 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "04 02 10 32 14 01",
+        "frame_control": "0x04",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.993
+    },
+    {
+      "n": 49,
+      "time": "2026-10-06T12:36:17.441734+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 51,
+      "attempt": 1,
+      "zcl_sent": "00 33 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 33 16 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.993
+    },
+    {
+      "n": 50,
+      "time": "2026-10-06T12:36:18.439495+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 52,
+      "attempt": 1,
+      "zcl_sent": "00 34 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 34 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.983
+    },
+    {
+      "n": 51,
+      "time": "2026-10-06T12:36:19.428464+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 53,
+      "attempt": 1,
+      "zcl_sent": "00 35 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 35 14 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.018
+    },
+    {
+      "n": 52,
+      "time": "2026-10-06T12:36:20.452924+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 54,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 36 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 36 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.958
+    },
+    {
+      "n": 53,
+      "time": "2026-10-06T12:36:21.417605+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 55,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 37 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 37 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.987
+    },
+    {
+      "n": 54,
+      "time": "2026-10-06T12:36:22.410788+00:00",
+      "cluster": "0xFC01",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 56,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 38 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 38 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.998
+    },
+    {
+      "n": 55,
+      "time": "2026-10-06T12:36:23.414985+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": null,
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 57,
+      "attempt": 1,
+      "zcl_sent": "00 39 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 39 16 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.979
+    },
+    {
+      "n": 56,
+      "time": "2026-10-06T12:36:24.401956+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 58,
+      "attempt": 1,
+      "zcl_sent": "00 3a 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 3a 12 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.0
+    },
+    {
+      "n": 57,
+      "time": "2026-10-06T12:36:25.408335+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": null,
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 59,
+      "attempt": 1,
+      "zcl_sent": "00 3b 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 3b 14 01",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.992
+    },
+    {
+      "n": 58,
+      "time": "2026-10-06T12:36:26.407486+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Attribute_Extended",
+      "command_id": "0x15",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        16
+      ],
+      "tsn": 60,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 3c 15 00 00 10",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 3c 16 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x16",
+        "command": "Discover_Attribute_Extended_rsp",
+        "discovery_complete": true,
+        "attributes": []
+      },
+      "elapsed_s": 0.975
+    },
+    {
+      "n": 59,
+      "time": "2026-10-06T12:36:27.388500+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Commands_Received",
+      "command_id": "0x11",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 61,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 3d 11 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 3d 12 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x12",
+        "command": "Discover_Commands_Received_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 0.988
+    },
+    {
+      "n": 60,
+      "time": "2026-10-06T12:36:28.383852+00:00",
+      "cluster": "0xEF00",
+      "side": "server",
+      "command": "Discover_Commands_Generated",
+      "command_id": "0x13",
+      "manufacturer": "0x1002",
+      "args": [
+        0,
+        32
+      ],
+      "tsn": 62,
+      "attempt": 1,
+      "zcl_sent": "04 02 10 3e 13 00 20",
+      "outcome": "reply",
+      "reply": {
+        "raw": "0c 02 10 3e 14 01",
+        "frame_control": "0x0C",
+        "manufacturer": "0x1002",
+        "command_id": "0x14",
+        "command": "Discover_Commands_Generated_rsp",
+        "discovery_complete": true,
+        "command_ids": []
+      },
+      "elapsed_s": 1.011
+    },
+    {
+      "n": 61,
+      "time": "2026-10-06T12:36:29.403752+00:00",
+      "cluster": "0x0102",
+      "side": "server",
+      "command": "Read_Attributes",
+      "command_id": "0x00",
+      "manufacturer": null,
+      "args": [
+        [
+          65533
+        ]
+      ],
+      "tsn": 63,
+      "attempt": 1,
+      "zcl_sent": "00 3f 00 fd ff",
+      "outcome": "reply",
+      "reply": {
+        "raw": "08 3f 01 fd ff 00 21 03 00",
+        "frame_control": "0x08",
+        "manufacturer": null,
+        "command_id": "0x01",
+        "command": "Read_Attributes_rsp",
+        "records": [
+          {
+            "id": "0xFFFD",
+            "status": "SUCCESS",
+            "status_code": "0x00",
+            "datatype": "0x21",
+            "value": 3
+          }
+        ]
+      },
+      "elapsed_s": 0.994
+    }
+  ],
+  "unmatched_frames": [
+    {
+      "time": "2026-10-06T12:35:43.529937+00:00",
+      "cluster": "0x0019",
+      "raw": "01 09 01 00 02 10 00 00 02 00 00 00",
+      "frame_control": "0x01",
+      "manufacturer": null,
+      "command_id": "0x01",
+      "command": "cluster-specific"
+    },
+    {
+      "time": "2026-10-06T12:36:29.423365+00:00",
+      "cluster": "0xEF00",
+      "raw": "0c 02 10 3e 14 01",
+      "frame_control": "0x0C",
+      "manufacturer": "0x1002",
+      "command_id": "0x14",
+      "command": "Discover_Commands_Generated_rsp",
+      "discovery_complete": true,
+      "command_ids": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "runs": [
+    {
+      "date": "2026-10-05",
+      "scope": "repo",
+      "polypowers_init_version": "6",
+      "state_sha256": "5e982ffb1772377867f9d8a67c1a719016b3dac4370d401679ce47e25c2726fd",
+      "steps": {
+        "R1": "ok",
+        "R2": "ok",
+        "R3": "ok",
+        "R4": "n/a:no-extra-tools",
+        "R5": "ok",
+        "R6": "ok"
+      }
+    }
+  ]
+}

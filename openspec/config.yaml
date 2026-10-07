@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Domain: SmartWings WM25/L-Z Zigbee roller-shade motors in Home Assistant via ZHA.
+  The motors depart from the ZCL WindowCovering cluster in measured ways (the "quirk
+  catalogue"): first frame after idle lost (sleepy end devices), position reported
+  only at the end of travel, every command answered SUCCESS then 0x81, a one-off
+  run-to-limit open stall, vendor quirk swaps up_open/down_close. The motor enforces the
+  limits set with its remote over Zigbee too (#54), so no closed limit is kept in software. docs/ is the spec of record (Part 1 devices,
+  Part 2 current software, Part 3 what must be built, with failure modes F1-F18).
+
+  Two deliverables; the integration identifies the quirk only by its quirk ID:
+  - U: the SmartWings quirk (zhaquirks/smartwings/wm25lz.py layout), developed in this
+    repo in upstream zha-device-handlers style and later submitted upstream.
+  - I: the Home Assistant custom integration custom_components/smartwings.
+
+  Tech stack: Python 3.14; Home Assistant 2026.10; zha 2.3.x; zigpy 2.3.x;
+  zha-quirks 2.3.x. Tests: pytest, pytest-homeassistant-custom-component, real ZHA
+  where the spec requires it. Lint: ruff (upstream zha-device-handlers norms for U).
+
+  Coordinate spaces: ZCL lift (0 open, 100 closed) vs HA cover position (0 closed,
+  100 open). Every stored or transmitted position names its space; conversion lives in
+  exactly one place.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

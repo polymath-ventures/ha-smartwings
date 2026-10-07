@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "repository": "polymath-ventures/ha-smartwings",
+  "clients": [
+    "claude-code",
+    "codex",
+    "gemini"
+  ],
+  "subsystems": {
+    "openspec": {
+      "enabled": true
+    },
+    "sx": {
+      "enabled": true
+    },
+    "agent_instructions": {
+      "enabled": true
+    },
+    "github_contract": {
+      "enabled": true
+    },
+    "tools": {
+      "enabled": true
+    },
+    "hooks": {
+      "enabled": true
+    }
+  }
+}
