@@ -1,13 +1,13 @@
 # SmartWings shades for Home Assistant
 
-Makes SmartWings WM25/L-Z Zigbee roller shades work reliably in Home Assistant's Zigbee integration (ZHA).
+This project makes SmartWings WM25/L-Z Zigbee roller shades work reliably in Home Assistant's Zigbee integration (ZHA).
 
 Out of the box, these shades misbehave in ZHA:
 
 - Open and Close are swapped.
-- The motor sometimes ignores a command, and nothing notices.
-- Commands can show an error even when the shade moved.
-- The position on the card is often wrong after a move.
+- The motor sometimes ignores a command, and Home Assistant doesn't send it again.
+- Home Assistant can show an error even when the shade moved.
+- The shade's card often shows the wrong position after a move.
 
 This project fixes all four. It is one small **integration** that adds a ZHA **quirk** (`custom_components/smartwings/quirk.py`) to ZHA. The quirk fixes how commands are sent to the shades.
 
@@ -24,7 +24,7 @@ This project fixes all four. It is one small **integration** that adds a ZHA **q
 
 That's it. You don't edit `configuration.yaml` or copy any quirk file.
 
-When you add the integration, it reloads ZHA once so that ZHA applies the quirk to your shades. Your Zigbee devices are unavailable for a few seconds while ZHA reloads. When Home Assistant restarts, the order in which it starts integrations varies: usually the integration starts first and ZHA applies the quirk directly, but sometimes the integration reloads ZHA once, and your Zigbee devices are again unavailable for a few seconds.
+When you add the integration, it reloads ZHA once so that ZHA applies the quirk to your shades. Your Zigbee devices are unavailable for a few seconds while ZHA reloads. After a Home Assistant restart, the integration may need to reload ZHA once more, with the same short gap.
 
 Settings → Repairs should show nothing from SmartWings. If it shows something, see [Repairs messages](#repairs-messages).
 
@@ -40,8 +40,8 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 ## What to expect
 
 - **The position updates when the shade stops, not while it moves.** These motors only report their position at the end of a move.
-- **If a shade ignores a command, it's sent again** once the shade should have arrived.
-- **Moves made with the remote** usually show up when the shade stops. If one doesn't, refresh the shade:
+- **If a shade ignores a command, the quirk sends it again.** Once the shade should have arrived, the quirk checks its position, and if the shade hasn't moved toward the target, it sends the command once more.
+- **Moves made with the remote** may not show in Home Assistant. If one doesn't, refresh the shade:
 
   ```yaml
   action: homeassistant.update_entity
@@ -59,14 +59,14 @@ In Home Assistant, 0 is the bottom limit, 100 is the top limit, and 50 is halfwa
 
 - **A shade closes too far, or not far enough.** Reset its limits with the remote (see above).
 - **Open closes the shade and Close opens it.** Check Settings → Repairs: the quirk is probably not loaded. If it is, the shade's direction may have been reversed when it was installed.
-- **"Failed to open cover" or "Failed to close cover".** The shade didn't confirm the command, or a newer command replaced it. It may be out of range. Try again.
-- **The shade didn't move and no error appeared.** The motor ignored the command twice. Try again. If a shade stays stuck, a short move in the other direction (or a press on its remote) usually frees it.
+- **"Failed to open cover" or "Failed to close cover".** The shade didn't confirm the command, or another command to the same shade got in the way. The shade may be out of range. Try again.
+- **The shade didn't move and no error appeared.** The motor ignored the command, and the quirk's second try didn't move it either (or the quirk couldn't read the position to check). Try again. If a shade stays stuck, a short move in the other direction (or a press on its remote) usually frees it.
 
 ## Limitations
 
 - Home Assistant can't read or set the shade's limits. Use the remote.
 - The position doesn't change on the card while the shade is moving.
-- The "go to lift value" and tilt commands in ZHA's device panel are refused, because the shade's radio garbles them. The normal controls, voice and automations don't use them.
+- The quirk refuses the "go to lift value" and tilt commands in ZHA's device panel, because the shade's radio garbles them. The normal controls, voice and automations don't use them.
 
 ## Uninstall
 
