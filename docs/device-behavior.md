@@ -129,12 +129,13 @@ The radio copies the motor's battery byte into `battery_percentage_remaining` (0
 
 Neither has been reproduced or explained.
 
-## What a firmware fix would need
+## What a radio firmware fix could do
 
 1. One correct reply per command.
-2. Accept Configure Reporting, and report position during travel too.
+2. Accept Configure Reporting.
 3. Fix or remove the 0x04, 0x07 and 0x08 handlers.
 4. Report battery in half-percent units.
-5. Put the remote-set limits and direction into `installed_*_limit_lift` and `config_status`.
 
 The shade has an OTA client, so a fixed image could be delivered through ZHA without removing any shade.
+
+Two things would need a different motor, not new radio firmware. The motor sends nothing while it travels, so the position can't be reported mid-move. And it tells the radio nothing when its limits are set or its direction is reversed with the remote, so neither can be put into `installed_*_limit_lift` or `config_status`. SmartWings' support has reportedly confirmed that the motor reports its position only when it stops.
