@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Adds the SmartWings quirk to Zigbee Home Automation (ZHA) for WM25/L-Z shades, and tells you when ZHA has not applied it. If ZHA is already running, SmartWings reloads it once, so your Zigbee devices are unavailable for a few seconds. Set each shade's limits with its remote: the shade stops at them for Home Assistant too."
+      }
+    },
+    "abort": {
+      "zha_not_configured": "Set up the Zigbee Home Automation (ZHA) integration first."
+    }
+  },
+  "exceptions": {
+    "zha_not_ready": {
+      "message": "Zigbee Home Automation (ZHA) is not set up."
+    }
+  },
+  "issues": {
+    "quirk_not_loaded": {
+      "title": "SmartWings quirk not loaded",
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nAnother quirk for these shades may take precedence, such as a file in your ZHA custom quirks folder. Remove that quirk, then restart Home Assistant."
+    },
+    "quirk_not_loaded_quirks_off": {
+      "title": "SmartWings quirk not loaded",
+      "description": "Zigbee Home Automation (ZHA) is not using the SmartWings quirk for these shades:\n\n{shades}\n\nZHA's quirks are turned off (`enable_quirks: false` in the `zha:` section of `configuration.yaml`), so SmartWings does not add its quirk. To use it, remove that line, then restart Home Assistant."
+    }
+  }
+}
